@@ -46,6 +46,15 @@ node_modules/
 *.log
 .phpunit.result.cache
 
+# ---- the website copied into backend/public by deploy/server/deploy.sh on the server
+/backend/public/*.html
+/backend/public/css/
+/backend/public/js/
+/backend/public/images/
+/backend/public/fonts/
+/backend/public/user/
+/backend/public/admin/
+
 # ---- editors / OS
 .idea/
 .vscode/
