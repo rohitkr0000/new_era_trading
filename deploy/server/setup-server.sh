@@ -55,6 +55,7 @@ sed -e "s/^innodb_buffer_pool_size .*/innodb_buffer_pool_size       = ${BP_MB}M/
     -e "s/^expire_logs_days/loose-expire_logs_days/" \
     "$HERE/database/my.production.cnf" > "$CNF"
 mkdir -p /var/log/mysql && chown mysql:mysql /var/log/mysql
+mkdir -p /var/lib/mysql-files && chown mysql:mysql /var/lib/mysql-files && chmod 750 /var/lib/mysql-files
 systemctl restart mariadb || { echo "MariaDB did not start with the tuned settings. Output:"; journalctl -u mariadb --no-pager -n 30; exit 1; }
 
 echo; echo "== 4/9  database + a locked-down user for the website =="

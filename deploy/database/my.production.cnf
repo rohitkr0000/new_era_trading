@@ -7,7 +7,7 @@
 bind-address                  = 127.0.0.1          # the database is NEVER reachable from the internet
 skip-name-resolve
 local_infile                  = 0                  # no LOAD DATA LOCAL (a classic data-theft path)
-secure_file_priv              = NULL               # no file import/export from SQL
+secure_file_priv              = /var/lib/mysql-files   # file import/export from SQL only inside this empty folder (MariaDB does not accept NULL here)
 skip_symbolic_links           = 1
 
 character-set-server          = utf8mb4
