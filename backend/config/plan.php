@@ -34,6 +34,7 @@ return [
     'minDeposit'       => 5,
     'depositNetwork'   => 'USDT · BEP20 (BSC)',
     'depositAddress'   => '0xDEMO0000000000000000000000000000000NEWERA',
+    'depositQr'        => null,   // set by Admin -> Plan Settings when a custom QR image is uploaded ("png:1732000000"); null = the site draws the QR from depositAddress
     'emailVerifyRequired' => true,  // members must confirm their e-mail (OTP) before withdrawing
     'kycRequired'      => true,     // members must have an approved KYC before withdrawing
     'autoApproveDeposits' => false, // credit deposits automatically once the blockchain confirms them (needs ETHERSCAN_API_KEY)

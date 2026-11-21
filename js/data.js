@@ -266,6 +266,7 @@
     get error() { return lastError; },
     API: API, ready: ready, refresh: boot,
     isDemo: function () { return demo; },
+    depositQrUrl: function () { var v = db.settings && db.settings.depositQr; return v ? API + '/public/deposit-qr?v=' + encodeURIComponent(v) : null; },
     demoLogins: function () { return demoLogins; },
     INCOME_TYPES: INCOME_TYPES, INCOME_LABELS: INCOME_LABELS,
     settings: function () { return db.settings; },
@@ -334,6 +335,9 @@
     setBlocked: function (id, blocked) { return write('POST', '/admin/members/' + id + '/block', { blocked: !!blocked }); },
     updateSettings: function (patch) { return write('PUT', '/admin/settings', patch); },
     addAnnouncement: function (text) { return write('POST', '/admin/announcements', { text: text }); },
+    // custom deposit QR image (replaces the QR the site draws from the address)
+    uploadDepositQr: function (file) { var f = new FormData(); f.append('qr', file); return req('POST', '/admin/deposit-qr', null, f).then(function (r) { return r.ok ? boot().then(function () { return r; }) : r; }); },
+    removeDepositQr: function () { return write('DELETE', '/admin/deposit-qr'); },
     reset: function () { return req('POST', '/admin/reset').then(function (r) { if (r.ok) logout(); return r; }); }
   };
 })(window);

@@ -54,6 +54,17 @@
         <div class="field"><label for="mind">Minimum deposit</label><input id="mind" type="number" min="0" step="1"></div>
         <div class="field"><label for="dnet">Network label</label><input id="dnet"></div>
         <div class="field"><label for="daddr">Company deposit address (0x… 42 characters)</label><input id="daddr" style="font-family:monospace"></div>
+        <div class="field">
+          <label>Deposit QR image</label>
+          <div class="row" style="align-items:center;gap:1rem;flex-wrap:wrap">
+            <div id="qrPrev" style="width:130px;height:130px;background:#fff;border-radius:12px;padding:6px;display:grid;place-items:center;color:#333;font-size:.72rem;text-align:center"></div>
+            <div style="display:grid;gap:.5rem">
+              <input type="file" id="qrFile" accept="image/png,image/jpeg,image/webp" style="max-width:260px">
+              <div class="row" style="gap:.5rem"><button class="btn btn-primary" type="button" id="qrUp">Upload QR</button><button class="btn btn-outline" type="button" id="qrDel" hidden>Use auto QR</button></div>
+              <small id="qrNote" style="opacity:.75"></small>
+            </div>
+          </div>
+        </div>
         <h3 class="mt">Security</h3>
         <div class="field"><label style="font-weight:500;display:flex;gap:.5rem;align-items:center"><input type="checkbox" id="evr" style="width:auto"> Require a verified e-mail to withdraw</label></div>
         <div class="field"><label style="font-weight:500;display:flex;gap:.5rem;align-items:center"><input type="checkbox" id="kycr" style="width:auto"> Require approved KYC to withdraw</label></div>
@@ -89,6 +100,25 @@
     $('ws').value = S.withdrawStart; $('we').value = S.withdrawEnd; $('rh').value = S.receiptHours; $('tz').value = S.timezone;
     $('evr').checked = !!S.emailVerifyRequired; $('kycr').checked = !!S.kycRequired; $('aad').checked = !!S.autoApproveDeposits;
     $('mind').value = S.minDeposit; $('dnet').value = S.depositNetwork; $('daddr').value = S.depositAddress;
+    function drawQr() {
+      var u = Store.depositQrUrl(), has = !!u;
+      $('qrPrev').innerHTML = has ? '<img alt="Deposit QR" style="max-width:100%;max-height:100%" src="' + u + '">' : 'Auto QR from the address above';
+      $('qrDel').hidden = !has;
+      $('qrNote').textContent = has ? 'Members see this image. Make sure it is the QR of the address above.' : 'No custom image: the site draws the QR (with the logo) from the deposit address. PNG, JPG or WEBP, up to 1 MB.';
+    }
+    drawQr();
+    $('qrUp').onclick = function () {
+      var f = $('qrFile').files[0];
+      if (!f) return UI.toast('Choose an image first', 'err');
+      if (f.size > 1024 * 1024) return UI.toast('Image is larger than 1 MB', 'err');
+      Store.uploadDepositQr(f).then(function (r) {
+        if (!r.ok) return UI.toast(r.error, 'err');
+        $('qrFile').value = ''; S = Store.settings(); drawQr(); UI.toast('Deposit QR updated');
+      });
+    };
+    $('qrDel').onclick = function () {
+      Store.removeDepositQr().then(function (r) { if (!r.ok) return UI.toast(r.error, 'err'); S = Store.settings(); drawQr(); UI.toast('Using the automatic QR'); });
+    };
     $('days').innerHTML = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(function (d, i) {
       return '<label style="font-weight:500;display:flex;gap:.3rem;align-items:center"><input type="checkbox" value="' + i + '" style="width:auto"' + (S.tradingDays.indexOf(i) > -1 ? ' checked' : '') + '>' + d + '</label>';
     }).join('');

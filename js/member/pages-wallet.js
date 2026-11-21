@@ -23,7 +23,7 @@
           '</div>' +
           '<ol class="m-steps"><li>Send <b>only USDT on ' + M.esc(S.depositNetwork) + '</b> to the address above.</li><li>Copy the transaction hash from your wallet or BscScan.</li>' +
           '<li>Submit the form. Your purchase wallet is credited once the deposit is verified.</li></ol>' +
-          '<p class="m-note warn">' + M.icon('shield') + 'Demo address — the admin sets the real one in Plan Settings. Never send funds to a demo address.</p>', { icon: 'card' }) +
+          (/DEMO/.test(S.depositAddress) ? '<p class="m-note warn">' + M.icon('shield') + 'Demo address — the admin sets the real one in Plan Settings. Never send funds to a demo address.</p>' : ''), { icon: 'card' }) +
         M.card('2 · Submit your deposit', '<div class="m-alert" hidden id="dpErr"></div><form id="dpForm" class="m-form">' +
           M.field('Amount (USDT)', '<input name="amount" type="number" min="' + S.minDeposit + '" step="0.01" required placeholder="Minimum ' + S.minDeposit + '">') +
           M.field('Transaction hash / ID', '<input name="txn" required placeholder="0x…" autocomplete="off">', 'Each hash can be submitted only once.') +
@@ -31,8 +31,20 @@
         '</div>';
       document.getElementById('dpCopy').onclick = function () { M.copy(S.depositAddress); };
       // QR of the company deposit address (with the logo in the centre — ECC level H keeps it scannable)
-      document.getElementById('dpQr').innerHTML = QR.svg(S.depositAddress, { ecl: 'H', logo: ctx.base + 'images/logo-128.png', fg: '#061230', quiet: 2 });
+      var custom = Store.depositQrUrl();   // an admin-uploaded QR image wins over the generated one
+      if (custom) {
+        var im = new Image(); im.alt = 'Deposit QR'; im.src = custom; im.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block';
+        im.onerror = function () { document.getElementById('dpQr').innerHTML = QR.svg(S.depositAddress, { ecl: 'H', logo: ctx.base + 'images/logo-128.png', fg: '#061230', quiet: 2 }); };
+        document.getElementById('dpQr').appendChild(im);
+      } else document.getElementById('dpQr').innerHTML = QR.svg(S.depositAddress, { ecl: 'H', logo: ctx.base + 'images/logo-128.png', fg: '#061230', quiet: 2 });
       document.getElementById('dpDl').onclick = function () {
+        if (custom) {   // download the uploaded image itself
+          fetch(custom).then(function (r) { return r.blob(); }).then(function (b) {
+            var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'new-era-trading-deposit-qr.' + (b.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+            document.body.appendChild(a); a.click(); a.remove();
+          });
+          return;
+        }
         // PNG download drawn straight from the QR matrix (no external images, so it works offline too)
         var mat = QR.matrix(S.depositAddress, 'H'), n = mat.length, q = 4, sc = 12, dim = (n + q * 2) * sc;
         var cv = document.createElement('canvas'); cv.width = cv.height = dim;

@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 
 // public
 Route::get('/public', [PublicController::class, 'summary'])->middleware('throttle:public');
+Route::get('/public/deposit-qr', [PublicController::class, 'depositQr'])->middleware('throttle:public');
 Route::get('/public/sponsor/{code}', [PublicController::class, 'sponsor'])->middleware('throttle:sponsor');
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:register');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
@@ -59,6 +60,8 @@ Route::middleware(['auth:sanctum', 'throttle:user', 'forget.snapshot'])->group(f
         Route::post('/tickets/{id}/close', [AdminController::class, 'closeTicket']);
         Route::put('/settings', [AdminController::class, 'settings']);
         Route::post('/announcements', [AdminController::class, 'announce']);
+        Route::post('/deposit-qr', [AdminController::class, 'depositQrUpload'])->middleware('throttle:admin-action');
+        Route::delete('/deposit-qr', [AdminController::class, 'depositQrRemove'])->middleware('throttle:admin-action');
         Route::post('/reset', [AdminController::class, 'reset']);
     });
 });

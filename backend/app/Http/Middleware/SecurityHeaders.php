@@ -18,8 +18,9 @@ class SecurityHeaders
         $h->set('Referrer-Policy', 'no-referrer');
         $h->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
         $h->set('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");   // an API answer is data, never a page
-        $h->set('Cross-Origin-Resource-Policy', 'same-site');
-        if ($request->is('api/*')) $h->set('Cache-Control', 'no-store, private');
+        $qr = $request->is('api/public/deposit-qr') && $response->getStatusCode() === 200;   // the one public image: browsers on another origin (and caches) may use it
+        if (! $qr) $h->set('Cross-Origin-Resource-Policy', 'same-site');
+        if ($request->is('api/*') && ! $qr) $h->set('Cache-Control', 'no-store, private');
         if ($request->isSecure()) $h->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         return $response;
     }

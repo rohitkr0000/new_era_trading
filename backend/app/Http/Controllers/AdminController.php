@@ -111,6 +111,34 @@ class AdminController extends Controller
         return response()->json(['ok' => true, 'settings' => $after]);
     }
 
+    /** Upload your own deposit QR image (e.g. exported from your wallet app). It replaces the QR the site draws from the address. */
+    public function depositQrUpload(Request $request): JsonResponse
+    {
+        $this->admin($request);
+        $request->validate(['qr' => 'required|file|mimes:png,jpg,jpeg,webp|max:1024']);
+        $f = $request->file('qr');
+        $info = @getimagesize($f->getRealPath());
+        if (! $info || ! in_array($info[2], [IMAGETYPE_PNG, IMAGETYPE_JPEG, IMAGETYPE_WEBP], true)) return response()->json(['error' => 'That file is not a valid PNG, JPG or WEBP image.'], 422);
+        if ($info[0] > 3000 || $info[1] > 3000 || $info[0] < 100 || $info[1] < 100) return response()->json(['error' => 'Image must be between 100 and 3000 pixels wide and tall.'], 422);
+        $ext = [IMAGETYPE_PNG => 'png', IMAGETYPE_JPEG => 'jpg', IMAGETYPE_WEBP => 'webp'][$info[2]];
+        $dir = storage_path('app/private/branding');
+        if (! is_dir($dir)) mkdir($dir, 0775, true);
+        foreach (glob($dir . '/deposit-qr.*') ?: [] as $old) @unlink($old);
+        $f->move($dir, 'deposit-qr.' . $ext);   // fixed name + extension from the real image type: the original file name is never used
+        Settings::update(['depositQr' => $ext . ':' . time()]);
+        Audit::log('settings.deposit-qr', $request->user(), null, ['action' => 'uploaded']);
+        return response()->json(['ok' => true, 'settings' => Settings::all()]);
+    }
+
+    public function depositQrRemove(Request $request): JsonResponse
+    {
+        $this->admin($request);
+        foreach (glob(storage_path('app/private/branding') . '/deposit-qr.*') ?: [] as $old) @unlink($old);
+        Settings::update(['depositQr' => null]);
+        Audit::log('settings.deposit-qr', $request->user(), null, ['action' => 'removed']);
+        return response()->json(['ok' => true, 'settings' => Settings::all()]);
+    }
+
     public function announce(Request $request): JsonResponse
     {
         $this->admin($request);
