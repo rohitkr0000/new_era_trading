@@ -338,6 +338,15 @@
     // custom deposit QR image (replaces the QR the site draws from the address)
     uploadDepositQr: function (file) { var f = new FormData(); f.append('qr', file); return req('POST', '/admin/deposit-qr', null, f).then(function (r) { return r.ok ? boot().then(function () { return r; }) : r; }); },
     removeDepositQr: function () { return write('DELETE', '/admin/deposit-qr'); },
+    // member profile for the admin, and the suspicious-activity alerts
+    memberOverview: function (id) { return req('GET', '/admin/members/' + id); },
+    riskAlerts: function (params) {
+      var q = Object.keys(params || {}).filter(function (k) { return params[k]; }).map(function (k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
+      return req('GET', '/admin/alerts' + (q ? '?' + q : ''));
+    },
+    riskUpdate: function (id, status, note) { return req('POST', '/admin/alerts/' + id, { status: status, note: note || null }); },
+    riskScan: function () { return req('POST', '/admin/alerts/scan'); },
+    revokeSessions: function (id) { return req('POST', '/admin/members/' + id + '/revoke'); },
     reset: function () { return req('POST', '/admin/reset').then(function (r) { if (r.ok) logout(); return r; }); }
   };
 })(window);

@@ -158,7 +158,7 @@ MariaDB with **5,013 members**, and **1,000 virtual users that each have their o
 | MariaDB | `deploy/database/my.production.cnf` (buffer pool ~60% of RAM, `max_connections` well above `pm.max_children`), same machine or a fast private network |
 | Cache | `CACHE_STORE=redis` (or `file` on one server). Never `database` under load |
 | In front | **Cloudflare** (free plan is enough to start): DDoS protection, caches the static site, rate limits. Keep `TRUSTED_PROXIES=*` so the real client IP is used |
-| Scheduler | the one cron line - `net:stats` (every minute), `net:accrue` (ROI + compounding), backups |
+| Scheduler | the one cron line - `net:stats` (every minute), `net:accrue` (ROI + compounding), `net:risk-scan` (every 10 min: data errors / suspicious activity -> admin alerts), backups |
 
 **Known limits - plan for them as you grow**
 * A member's dashboard downloads their *whole team*: fine for a few thousand people below a member; a leader with 5,000+ people needs the team pages paginated.

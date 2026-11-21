@@ -1,6 +1,6 @@
 # New Era Trading — database structure
 
-Database `neweratrading` (10.4.32-MariaDB-log), generated 2026-11-21 05:46:05 by `php artisan app:db-schema`.
+Database `neweratrading` (10.4.32-MariaDB-log), generated 2026-11-21 09:42:12 by `php artisan app:db-schema`.
 
 Money columns are `DECIMAL(18,2)` — never floats. Every balance change is written to a ledger table. Timestamps are stored in UTC.
 
@@ -26,6 +26,7 @@ Money columns are `DECIMAL(18,2)` — never floats. Every balance change is writ
 | `otps` | E-mailed one-time codes: stored hashed, expiring, attempt-limited and bound to one request (context). | InnoDB |
 | `password_reset_tokens` | Unused (password reset uses otps). | InnoDB |
 | `personal_access_tokens` | Login tokens (hashed), with expiry. | InnoDB |
+| `risk_alerts` |  | InnoDB |
 | `sessions` | Unused by the API (token auth). | InnoDB |
 | `settings` | Plan settings overrides edited in Admin -> Plan Settings. | InnoDB |
 | `tickets` | Support tickets. | InnoDB |
@@ -343,6 +344,27 @@ Login tokens (hashed), with expiry.
 
 **Indexes:** `personal_access_tokens_expires_at_index` (expires_at) · `personal_access_tokens_tokenable_type_tokenable_id_index` (tokenable_type,tokenable_id) · `personal_access_tokens_token_unique` (token) unique · `PRIMARY` (id) unique
 
+## `risk_alerts`
+
+| Column | Type | Null | Default | Key / extra |
+|---|---|---|---|---|
+| `id` | bigint(20) unsigned | no |  | PRI auto_increment |
+| `user_id` | bigint(20) unsigned | yes | `NULL` | MUL |
+| `code` | varchar(40) | no |  | MUL |
+| `severity` | varchar(8) | no |  | MUL |
+| `title` | varchar(160) | no |  |  |
+| `detail` | text | no |  |  |
+| `data` | text | yes | `NULL` |  |
+| `fingerprint` | varchar(64) | no |  |  |
+| `status` | varchar(10) | no | `'open'` | MUL |
+| `handled_by` | bigint(20) unsigned | yes | `NULL` |  |
+| `handled_at` | datetime | yes | `NULL` |  |
+| `note` | varchar(255) | yes | `NULL` |  |
+| `created_at` | datetime | yes | `NULL` | MUL |
+| `updated_at` | datetime | yes | `NULL` |  |
+
+**Indexes:** `PRIMARY` (id) unique · `risk_alerts_code_index` (code) · `risk_alerts_created_at_index` (created_at) · `risk_alerts_severity_index` (severity) · `risk_alerts_status_index` (status) · `risk_alerts_user_id_code_fingerprint_unique` (user_id,code,fingerprint) unique · `risk_alerts_user_id_index` (user_id)
+
 ## `sessions`
 
 Unused by the API (token auth).
@@ -462,8 +484,10 @@ Every account: members and admins. Money balances (wallet = income wallet, purch
 | `last_login_ip` | varchar(45) | yes | `NULL` |  |
 | `compound_mode` | varchar(8) | no | `'compound'` |  |
 | `compound_through` | date | yes | `NULL` |  |
+| `team_size` | int(10) unsigned | no | `0` | MUL |
+| `team_business` | decimal(18,2) | no | `0.00` | MUL |
 
-**Indexes:** `PRIMARY` (id) unique · `users_code_unique` (code) unique · `users_email_unique` (email) unique · `users_kyc_status_index` (kyc_status) · `users_left_id_foreign` (left_id) · `users_parent_id_index` (parent_id) · `users_phone_key_unique` (phone_key) unique · `users_right_id_foreign` (right_id) · `users_role_index` (role) · `users_sponsor_id_index` (sponsor_id)
+**Indexes:** `PRIMARY` (id) unique · `users_code_unique` (code) unique · `users_email_unique` (email) unique · `users_kyc_status_index` (kyc_status) · `users_left_id_foreign` (left_id) · `users_parent_id_index` (parent_id) · `users_phone_key_unique` (phone_key) unique · `users_right_id_foreign` (right_id) · `users_role_index` (role) · `users_sponsor_id_index` (sponsor_id) · `users_team_business_index` (team_business) · `users_team_size_index` (team_size)
 
 **Foreign keys:** `left_id` → `users.id` · `parent_id` → `users.id` · `right_id` → `users.id` · `sponsor_id` → `users.id`
 

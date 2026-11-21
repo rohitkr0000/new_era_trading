@@ -75,7 +75,7 @@
       ['income', '💰', 'Income'], ['wallet', '👛', 'Wallet'], ['packages', '📦', 'Packages'], ['profile', '👤', 'Profile']
     ],
     admin: [
-      ['dashboard', '📊', 'Dashboard'], ['members', '👥', 'Members'], ['deposits', '💳', 'Deposits'], ['payouts', '💸', 'Payouts'], ['kyc', '🪪', 'KYC'], ['tickets', '💬', 'Tickets'], ['audit', '🧾', 'Audit Log'], ['calculator', '🧮', 'Calculator'], ['settings', '⚙️', 'Plan Settings']
+      ['dashboard', '📊', 'Dashboard'], ['members', '👥', 'Members'], ['deposits', '💳', 'Deposits'], ['payouts', '💸', 'Payouts'], ['kyc', '🪪', 'KYC'], ['tickets', '💬', 'Tickets'], ['alerts', '🚨', 'Alerts'], ['audit', '🧾', 'Audit Log'], ['calculator', '🧮', 'Calculator'], ['settings', '⚙️', 'Plan Settings']
     ]
   };
 
@@ -128,6 +128,11 @@
       document.getElementById('menuBtn').addEventListener('click', toggle);
       document.getElementById('scrim').addEventListener('click', toggle);
       document.getElementById('logoutBtn').addEventListener('click', function () { Store.logout(); location.href = base + 'login.html'; });
+      if (role === 'admin') {   // member profiles + suspicious-activity alerts + popup (loaded on every admin page)
+        var rs = document.createElement('script'); rs.src = base + 'js/admin-risk.js';
+        rs.onload = function () { if (global.AdminRisk) global.AdminRisk.watch(); };
+        document.body.appendChild(rs);
+      }
       return u;
     }
   };

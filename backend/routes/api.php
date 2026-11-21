@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\PublicController;
+use App\Http\Controllers\RiskController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -49,6 +50,11 @@ Route::middleware(['auth:sanctum', 'throttle:user', 'forget.snapshot'])->group(f
 
     Route::prefix('admin')->middleware('role:admin')->group(function () {
         Route::post('/members/{id}/block', [AdminController::class, 'block']);
+        Route::get('/members/{id}', [RiskController::class, 'member'])->whereNumber('id');
+        Route::post('/members/{id}/revoke', [RiskController::class, 'revoke'])->whereNumber('id')->middleware('throttle:admin-action');
+        Route::get('/alerts', [RiskController::class, 'alerts']);
+        Route::post('/alerts/scan', [RiskController::class, 'scan'])->middleware('throttle:admin-action');
+        Route::post('/alerts/{id}', [RiskController::class, 'alertUpdate'])->whereNumber('id');
         Route::post('/deposits/{id}', [AdminController::class, 'deposit']);
         Route::post('/deposits/{id}/recheck', [AdminController::class, 'recheckDeposit'])->middleware('throttle:admin-action');
         Route::get('/kyc', [AdminController::class, 'kycList']);

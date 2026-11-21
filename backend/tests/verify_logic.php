@@ -555,6 +555,67 @@ try {
     check('every member\'s invested total equals the sum of their orders', ! $inv, implode(',', array_slice($inv, 0, 5)));
     $capBad = []; foreach (User::where('role', 'member')->get() as $u) { $c = $plan->capInfo($u); if (! $c['unlimited'] && Money::cmp($plan->incomeTotal($u->id), $c['cap']) > 0) $capBad[] = $u->code; }
     check('nobody has earned more than their cap', ! $capBad, implode(',', array_slice($capBad, 0, 5)));
+
+    section('Risk alerts (data errors and suspicious activity)');
+    $risk = app(\App\Services\RiskService::class);
+    $ids = User::where('role', 'member')->orderBy('id')->take(3)->pluck('id')->all();
+    [$ra, $rb, $rc] = $ids;
+    $codes = fn (int $id) => array_column($risk->checkMember($id), 'code');
+    check('a healthy member has no data-error alerts', ! array_intersect($codes($ra), ['balance-mismatch', 'negative-balance', 'over-cap', 'roi-twice', 'roi-days']), implode(',', $codes($ra)));
+    DB::table('users')->where('id', $ra)->update(['wallet' => DB::raw('wallet + 50')]);
+    check('income wallet that differs from its ledger is flagged', in_array('balance-mismatch', $codes($ra)));
+    DB::table('users')->where('id', $ra)->update(['wallet' => DB::raw('wallet - 50')]);
+    DB::table('users')->where('id', $rb)->update(['purchase_wallet' => -5]);
+    check('a negative balance is flagged', in_array('negative-balance', $codes($rb)));
+    DB::table('users')->where('id', $rb)->update(['purchase_wallet' => 0]);
+    $tOrder = DB::table('orders')->where('user_id', $rc)->value('id');
+    if ($tOrder) {
+        DB::table('ledger')->insert([['user_id' => $rc, 'type' => 'roi', 'amount' => 1, 'note' => 't', 'order_id' => $tOrder, 'created_at' => '2026-01-05 10:00:00'], ['user_id' => $rc, 'type' => 'roi', 'amount' => 1, 'note' => 't', 'order_id' => $tOrder, 'created_at' => '2026-01-05 11:00:00']]);
+        check('ROI credited twice for one package on one day is flagged', in_array('roi-twice', $codes($rc)));
+        DB::table('ledger')->where('note', 't')->where('user_id', $rc)->delete();
+        DB::table('orders')->where('id', $tOrder)->update(['days' => 25, 'paid_days' => 30]);
+        check('more ROI days paid than the plan allows is flagged', in_array('roi-days', $codes($rc)));
+        DB::table('orders')->where('id', $tOrder)->update(['paid_days' => 0]);
+    }
+    $big = DB::table('users')->where('id', $ra)->value('invested');
+    DB::table('ledger')->insert(['user_id' => $ra, 'type' => 'roi', 'amount' => Money::mul($big ?: 10, 50), 'note' => 'cap-test', 'created_at' => Carbon::now()]);
+    check('income above the earning cap is flagged', in_array('over-cap', $codes($ra)));
+    DB::table('ledger')->where('note', 'cap-test')->delete();
+    DB::table('users')->whereIn('id', [$ra, $rb])->update(['usdt_address' => '0x' . str_repeat('a', 40)]);
+    check('the same payout wallet on two members is flagged', in_array('same-wallet', $codes($ra)) && in_array('same-wallet', $codes($rb)));
+    DB::table('users')->whereIn('id', [$ra, $rb])->update(['usdt_address' => null]);
+    DB::table('users')->whereIn('id', [$ra, $rb, $rc])->update(['last_login_ip' => '8.8.8.8']);
+    check('three members on one public IP are flagged', in_array('same-ip', $codes($rb)));
+    DB::table('users')->whereIn('id', [$ra, $rb, $rc])->update(['last_login_ip' => '10.0.0.5']);
+    check('private / office addresses are not treated as evidence', ! in_array('same-ip', $codes($rb)));
+    for ($i = 0; $i < 3; $i++) DB::table('audit_logs')->insert(['actor_id' => $rb, 'actor' => 't', 'action' => 'security.wrong-pin', 'created_at' => Carbon::now()]);
+    for ($i = 0; $i < 5; $i++) DB::table('audit_logs')->insert(['actor_id' => $rb, 'actor' => 't', 'action' => 'auth.login-failed', 'created_at' => Carbon::now()]);
+    check('repeated wrong PINs and failed sign-ins are flagged', in_array('bad-pins', $codes($rb)) && in_array('bad-logins', $codes($rb)));
+    DB::table('deposits')->insert(['user_id' => $rb, 'amount' => 100, 'txn_id' => '0xrisk-test', 'network' => 'USDT', 'status' => 'pending', 'verified' => 'mismatch', 'verify_note' => 'amount differs', 'created_at' => Carbon::now()]);
+    check('a deposit that does not match the blockchain is flagged', in_array('deposit-mismatch', $codes($rb)));
+    DB::table('withdrawals')->insert(['ref' => 'WRISK1', 'user_id' => $rb, 'amount' => 1500, 'fee' => 150, 'net' => 1350, 'method' => 'USDT', 'account' => '0x1', 'status' => 'pending', 'created_at' => Carbon::now()]);
+    DB::table('users')->where('id', $rb)->update(['kyc_status' => 'none']);
+    $c2 = $codes($rb);
+    check('a large pending withdrawal is flagged', in_array('big-withdrawal', $c2));
+    check('a pending withdrawal without approved KYC is flagged', in_array('no-kyc-withdrawal', $c2));
+    DB::table('users')->where('id', $rb)->update(['blocked' => true]);
+    check('a blocked member with a pending withdrawal is flagged', in_array('blocked-pending', $codes($rb)));
+    DB::table('users')->where('id', $rb)->update(['blocked' => false]);
+    for ($i = 0; $i < 4; $i++) DB::table('transfers')->insert(['kind' => 'member', 'from_id' => $i % 2 ? $ra : $rc, 'to_id' => $i % 2 ? $rc : $ra, 'amount' => 10, 'fee' => 0.5, 'net' => 9.5, 'created_at' => Carbon::now()]);
+    check('money moving back and forth between two members is flagged', in_array('p2p-pingpong', $codes($ra)));
+
+    $r1 = $risk->scan();
+    check('a scan raises alerts for what it found', $r1['new'] > 0 && $r1['open'] > 0, json_encode($r1));
+    $r2 = $risk->scan();
+    check('scanning again does not duplicate alerts', $r2['new'] === 0, json_encode($r2));
+    $one = DB::table('risk_alerts')->where('status', 'open')->first();
+    DB::table('risk_alerts')->where('id', $one->id)->update(['status' => 'dismissed']);
+    $risk->scan();
+    check('a dismissed alert is not raised again for the same problem', DB::table('risk_alerts')->where('id', $one->id)->value('status') === 'dismissed');
+    DB::table('withdrawals')->where('ref', 'WRISK1')->delete();
+    DB::table('deposits')->where('txn_id', '0xrisk-test')->delete();
+    $r3 = $risk->scan();
+    check('alerts whose cause is gone are cleared automatically', $r3['cleared'] > 0 && DB::table('risk_alerts')->where('code', 'big-withdrawal')->where('status', 'open')->count() === 0, json_encode($r3));
 } catch (Throwable $e) {
     $fail++;
     echo "\n  ERROR  " . get_class($e) . ': ' . $e->getMessage() . "\n         at " . $e->getFile() . ':' . $e->getLine() . "\n";

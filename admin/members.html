@@ -31,6 +31,15 @@
   var me = Layout.mount();
   if (me) {
     var $ = function (id) { return document.getElementById(id); };
+    var flags = {};   // open alerts per member, shown as a red ⚠ tag next to the name
+    function loadFlags() {
+      Store.riskAlerts({ status: 'open', limit: 300 }).then(function (r) {
+        if (!r.ok) return;
+        flags = {}; r.items.forEach(function (a) { if (a.userId) flags[a.userId] = (flags[a.userId] || 0) + 1; });
+        draw();
+      });
+    }
+    function openProfile(id) { if (window.AdminRisk) window.AdminRisk.openMember(id); else UI.toast('Still loading, try again in a second', 'err'); }
     function draw() {
       var q = $('q').value.toLowerCase(), st = $('st').value, pk = $('pk').value;
       var list = Store.members().filter(function (u) {
@@ -46,10 +55,11 @@
       $('list').innerHTML = UI.table(['Member', 'Sponsor', 'Invested', 'Earning cap', 'Status', 'Wallet', 'Team', 'Joined', ''],
         list.map(function (u) {
           var sp = u.sponsorId ? Store.byId(u.sponsorId) : null, c = Store.capInfo(u.id);
-          return [UI.esc(u.name) + '<br><small class="muted">' + UI.esc(u.code) + ' · ' + UI.esc(u.email) + '</small>',
+          return ['<a href="#" data-view="' + u.id + '"><b>' + UI.esc(u.name) + '</b></a>' + (flags[u.id] ? '<span class="mem-flag" data-view="' + u.id + '" title="Open alerts">⚠ ' + flags[u.id] + '</span>' : '') + '<br><small class="muted">' + UI.esc(u.code) + ' · ' + UI.esc(u.email) + '</small>',
             sp ? UI.esc(sp.code) : '—', UI.pkgBadge(u), c.mult + 'X · ' + c.pct + '% used', UI.statusBadge(u), UI.money(u.wallet), Store.teamSize(u.id), UI.date(u.joined),
-            '<button class="btn btn-sm ' + (u.blocked ? 'btn-success' : 'btn-ghost') + '" data-block="' + u.id + '">' + (u.blocked ? 'Unblock' : 'Block') + '</button>'];
+            '<button class="btn btn-sm btn-outline" data-view="' + u.id + '">Details</button> <button class="btn btn-sm ' + (u.blocked ? 'btn-success' : 'btn-ghost') + '" data-block="' + u.id + '">' + (u.blocked ? 'Unblock' : 'Block') + '</button>'];
         }), 'No members match your filters.');
+      document.querySelectorAll('[data-view]').forEach(function (b) { b.onclick = function (e) { e.preventDefault(); openProfile(Number(b.dataset.view)); }; });
       document.querySelectorAll('[data-block]').forEach(function (b) {
         b.onclick = function () {
           var u = Store.byId(Number(b.dataset.block)), nb = !u.blocked;
@@ -59,7 +69,8 @@
       });
     }
     ['q', 'st', 'pk'].forEach(function (id) { $(id).addEventListener('input', draw); });
-    draw();
+    window.__membersRedraw = function () { loadFlags(); };
+    draw(); loadFlags();
   }
   });
 </script>

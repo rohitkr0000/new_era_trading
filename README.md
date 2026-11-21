@@ -87,6 +87,7 @@ Sender of every mail: `New Era Trading <no-reply@neweratrading.net>`. In develop
 | `php artisan app:test-mail you@gmail.com` | send one real test mail to check SMTP |
 | `php artisan app:backup` / `app:restore <file>` | backup / restore |
 | `php artisan net:accrue` / `net:verify-deposits` | ROI credit / blockchain re-check (both run from the scheduler) |
+| `php artisan net:risk-scan` | looks for data errors and suspicious activity and raises admin alerts (runs every 10 minutes; Admin -> Alerts) |
 
 ## Tests
 * `backend\tests\verify.bat` - 151 checks of the plan rules, OTP, deposit verification, payouts, audit and backups on a throw-away SQLite database (your real data is never touched).
