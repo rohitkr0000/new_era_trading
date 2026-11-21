@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plan Settings — Admin</title>
+  <link rel="icon" href="../images/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="../images/favicon.png">
+  <link rel="stylesheet" href="../css/fonts.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/panel.css">
+</head>
+<body data-role="admin" data-page="settings" data-title="Plan Settings" data-base="../">
+<main id="page-content" hidden>
+  <form id="sForm" novalidate>
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>Returns</h3>
+        <div class="grid grid-2" style="gap:.8rem">
+          <div class="field"><label for="roi">ROI (% of package per trading day)</label><input id="roi" type="number" min="0" max="100" step="0.01"></div>
+          <div class="field"><label for="roidays">Max ROI days per package (0 = until cap)</label><input id="roidays" type="number" min="0" step="1"></div>
+          <div class="field"><label for="direct">Direct referral income (%)</label><input id="direct" type="number" min="0" max="100" step="0.01"></div>
+          <div class="field"><label for="retopup">Retopup income (%)</label><input id="retopup" type="number" min="0" max="100" step="0.01"></div>
+        </div>
+        <div class="field"><label for="levels">Level income on every downline investment — % for levels 1…12, comma separated</label><input id="levels" placeholder="2,1,0.2,0.2,…"></div>
+        <h3 class="mt">Earning cap (multiplier)</h3>
+        <div class="grid grid-2" style="gap:.8rem">
+          <div class="field"><label for="capn">Non-working (× invested)</label><input id="capn" type="number" min="0" step="0.5"></div>
+          <div class="field"><label for="capw">Working — enough active directs (× invested)</label><input id="capw" type="number" min="0" step="0.5"></div>
+          <div class="field"><label for="capm">How a member becomes "Working" (5X)</label><select id="capm"><option value="business">Level-1 business reaches a multiple of own investment</option><option value="directs">Number of active direct referrals</option></select></div>
+          <div class="field"><label for="capb">Level-1 business needed (× own investment)</label><input id="capb" type="number" min="0" step="0.5"></div>
+          <div class="field"><label for="capd">Active directs that unlock all 12 levels</label><input id="capd" type="number" min="0" step="1"></div>
+          <div class="field"><label for="jm">Joining / retopup in multiples of ($)</label><input id="jm" type="number" min="1" step="1"></div>
+        </div>
+        <div class="field"><label style="font-weight:500;display:flex;gap:.5rem;align-items:center"><input type="checkbox" id="lvl" style="width:auto"> Unlock income levels one by one (level k needs k active direct referrals)</label></div>
+        <p class="hint">Changes apply to future credits only; past income is never recalculated. Fixed returns combined with referral income are regulated or prohibited in many countries — confirm the legal position before launch.</p>
+      </div>
+      <div class="card">
+        <h3>Joining &amp; withdrawal</h3>
+        <div class="grid grid-2" style="gap:.8rem">
+          <div class="field"><label for="minj">Minimum joining</label><input id="minj" type="number" min="0" step="1"></div>
+          <div class="field"><label for="minw">Minimum withdrawal</label><input id="minw" type="number" min="0" step="1"></div>
+          <div class="field"><label for="mult">Withdraw in multiples of</label><input id="mult" type="number" min="0" step="1"></div>
+          <div class="field"><label for="fee">Withdrawal charge (%)</label><input id="fee" type="number" min="0" max="100" step="0.1"></div>
+          <div class="field"><label for="p2p">P2P transfer charge (%)</label><input id="p2p" type="number" min="0" max="100" step="0.1"></div>
+          <div class="field"><label for="ws">Window opens (hour, 0–23)</label><input id="ws" type="number" min="0" max="23" step="1"></div>
+          <div class="field"><label for="we">Window closes (hour, 0–23)</label><input id="we" type="number" min="1" max="24" step="1"></div>
+          <div class="field"><label for="rh">Receipt target (hours)</label><input id="rh" type="number" min="1" step="1"></div>
+          <div class="field"><label for="tz">Timezone (IANA)</label><input id="tz" placeholder="Asia/Kolkata"></div>
+        </div>
+        <div class="field"><label>Trading days (ROI is credited and withdrawals are open only on these days)</label>
+          <div class="row" id="days"></div></div>
+        <h3 class="mt">Deposits (USDT)</h3>
+        <div class="field"><label for="mind">Minimum deposit</label><input id="mind" type="number" min="0" step="1"></div>
+        <div class="field"><label for="dnet">Network label</label><input id="dnet"></div>
+        <div class="field"><label for="daddr">Company deposit address (0x… 42 characters)</label><input id="daddr" style="font-family:monospace"></div>
+        <h3 class="mt">Security</h3>
+        <div class="field"><label style="font-weight:500;display:flex;gap:.5rem;align-items:center"><input type="checkbox" id="evr" style="width:auto"> Require a verified e-mail to withdraw</label></div>
+        <div class="field"><label style="font-weight:500;display:flex;gap:.5rem;align-items:center"><input type="checkbox" id="kycr" style="width:auto"> Require approved KYC to withdraw</label></div>
+        <div class="field"><label style="font-weight:500;display:flex;gap:.5rem;align-items:center"><input type="checkbox" id="aad" style="width:auto"> Credit deposits automatically when the blockchain confirms them (needs ETHERSCAN_API_KEY)</label></div>
+      </div>
+    </div>
+    <div class="card mt">
+      <h3>Announcements</h3>
+      <div class="copy-box"><input id="annText" placeholder="Write an announcement shown on every member dashboard"><button class="btn btn-primary" type="button" id="annBtn">Post</button></div>
+      <div id="annList" class="mt"></div>
+    </div>
+    <div class="row mt">
+      <button class="btn btn-primary" type="submit">Save settings</button>
+      <button class="btn btn-danger" type="button" id="resetBtn" hidden>Reset demo data</button>
+    </div>
+  </form>
+</main>
+
+<script src="../js/data.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  Store.ready.then(function () {
+  var me = Layout.mount();
+  if (me) {
+    var $ = function (id) { return document.getElementById(id); };
+    var S = Store.settings();
+    var num = function (id, d) { var v = parseFloat($(id).value); return isNaN(v) ? d : v; };
+    var list = function (v) { return v.split(',').map(function (x) { return parseFloat(x); }).filter(function (x) { return !isNaN(x) && x >= 0; }); };
+
+    $('roi').value = S.roiPct; $('roidays').value = S.roiDays; $('direct').value = S.directPct; $('retopup').value = S.retopupPct;
+    $('levels').value = S.levelPct.join(','); $('capn').value = S.capNonWorking; $('capw').value = S.capWorking; $('capd').value = S.capDirectsRequired; $('capm').value = S.capMode || 'business'; $('capb').value = S.capBusinessMultiple == null ? 5 : S.capBusinessMultiple; $('jm').value = S.joinMultiple; $('lvl').checked = !!S.levelUnlockPerLevel;
+    $('minj').value = S.minJoin; $('minw').value = S.minWithdraw; $('mult').value = S.withdrawMultiple; $('fee').value = S.withdrawFeePct; $('p2p').value = S.p2pFeePct == null ? 5 : S.p2pFeePct;
+    $('ws').value = S.withdrawStart; $('we').value = S.withdrawEnd; $('rh').value = S.receiptHours; $('tz').value = S.timezone;
+    $('evr').checked = !!S.emailVerifyRequired; $('kycr').checked = !!S.kycRequired; $('aad').checked = !!S.autoApproveDeposits;
+    $('mind').value = S.minDeposit; $('dnet').value = S.depositNetwork; $('daddr').value = S.depositAddress;
+    $('days').innerHTML = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(function (d, i) {
+      return '<label style="font-weight:500;display:flex;gap:.3rem;align-items:center"><input type="checkbox" value="' + i + '" style="width:auto"' + (S.tradingDays.indexOf(i) > -1 ? ' checked' : '') + '>' + d + '</label>';
+    }).join('');
+
+    function drawAnn() {
+      $('annList').innerHTML = UI.table(['Date', 'Announcement'], Store.db.announcements.slice().sort(function (a, b) { return b.date - a.date; })
+        .map(function (a) { return [UI.date(a.date), UI.esc(a.text)]; }), 'No announcements yet.');
+    }
+    $('annBtn').onclick = function () {
+      Store.addAnnouncement($('annText').value).then(function (r) {
+        if (!r.ok) return UI.toast(r.error, 'err');
+        $('annText').value = ''; drawAnn(); UI.toast('Announcement posted');
+      });
+    };
+    drawAnn();
+
+    $('sForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var tz = $('tz').value.trim() || S.timezone;
+      try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); } catch (er) { return UI.toast('Unknown timezone: ' + tz, 'err'); }
+      Store.updateSettings({
+        roiPct: num('roi', 0), roiDays: Math.max(0, Math.round(num('roidays', 0))), directPct: num('direct', 0), retopupPct: num('retopup', 0),
+        levelPct: list($('levels').value), capNonWorking: num('capn', 0), capWorking: num('capw', 0), capDirectsRequired: Math.max(0, Math.round(num('capd', 12))), capMode: $('capm').value, capBusinessMultiple: num('capb', 5),
+        joinMultiple: num('jm', 5), levelUnlockPerLevel: $('lvl').checked,
+        minJoin: num('minj', 1), minWithdraw: num('minw', 0), withdrawMultiple: num('mult', 0), withdrawFeePct: num('fee', 0), p2pFeePct: num('p2p', 5),
+        withdrawStart: num('ws', 10), withdrawEnd: num('we', 14), receiptHours: num('rh', 24), timezone: tz,
+        tradingDays: [].slice.call(document.querySelectorAll('#days input:checked')).map(function (c) { return +c.value; }),
+        emailVerifyRequired: $('evr').checked, kycRequired: $('kycr').checked, autoApproveDeposits: $('aad').checked, minDeposit: num('mind', 0), depositNetwork: $('dnet').value.trim() || S.depositNetwork, depositAddress: $('daddr').value.trim() || S.depositAddress
+      }).then(function (r) { UI.toast(r.ok ? 'Settings saved' : r.error, r.ok ? 'ok' : 'err'); });
+    });
+    $('resetBtn').hidden = !Store.isDemo();   // only on a demo server
+    $('resetBtn').onclick = function () {
+      if (confirm('Erase ALL data and restore the demo network? You will be logged out.')) { Store.reset().then(function (r) { if (!r.ok) return UI.toast(r.error, 'err'); location.href = '../login.html'; }); }
+    };
+  }
+  });
+</script>
+</body>
+</html>

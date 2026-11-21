@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KYC — Admin</title>
+  <link rel="icon" href="../images/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="../images/favicon.png">
+  <link rel="stylesheet" href="../css/fonts.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/panel.css">
+</head>
+<body data-role="admin" data-page="kyc" data-title="KYC Review" data-base="../">
+<main id="page-content" hidden>
+  <div class="card">
+    <div class="card-head">
+      <h3>Identity documents</h3>
+      <select id="filter" style="max-width:180px"><option value="pending">Pending</option><option value="">All</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select>
+    </div>
+    <p class="hint">Documents are private: they are stored outside the public web folder and only an admin signed in here can open them. Every view is written to the audit log.</p>
+    <div id="list"></div>
+  </div>
+</main>
+
+<script src="../js/data.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  Store.ready.then(function () {
+  var me = Layout.mount();
+  if (me) {
+    var kind = { pending: 'amber', approved: 'green', rejected: 'red' };
+    var LABEL = { passport: 'Passport', national_id: 'National ID', driving_licence: 'Driving licence', aadhaar: 'Aadhaar', pan: 'PAN card' };
+    var items = [];
+
+    function draw() {
+      var f = document.getElementById('filter').value;
+      var rows = items.filter(function (k) { return !f || k.status === f; });
+      document.getElementById('list').innerHTML = UI.table(['Submitted', 'Member', 'Document', 'Files', 'Status', ''], rows.map(function (k) {
+        var files = ['front'].concat(k.hasBack ? ['back'] : []).concat(['selfie']).map(function (w) {
+          return '<button class="btn btn-sm" data-file="' + w + '" data-id="' + k.id + '">' + w + '</button>';
+        }).join(' ');
+        var act = k.status === 'pending'
+          ? '<button class="btn btn-sm btn-success" data-act="approved" data-id="' + k.id + '">Approve</button> <button class="btn btn-sm btn-danger" data-act="rejected" data-id="' + k.id + '">Reject</button>'
+          : (k.note ? '<small class="muted">' + UI.esc(k.note) + '</small>' : '');
+        return [UI.date(k.date), UI.esc(k.name) + '<br><small class="muted">' + UI.esc(k.code) + ' · ' + UI.esc(k.email) + '</small>',
+          UI.esc(LABEL[k.docType] || k.docType) + '<br><code>' + UI.esc(k.docNumber) + '</code>', files, UI.badge(k.status, kind[k.status]), act];
+      }), 'No submissions in this view.');
+
+      document.querySelectorAll('[data-file]').forEach(function (b) {
+        b.onclick = function () {
+          var win = window.open('', '_blank');           // opened synchronously so popup blockers allow it
+          Store.kycFileUrl(b.dataset.id, b.dataset.file).then(function (url) { if (win) win.location = url; else location.href = url; })
+            .catch(function () { if (win) win.close(); UI.toast('Could not open the file', 'err'); });
+        };
+      });
+      document.querySelectorAll('[data-act]').forEach(function (b) {
+        b.onclick = function () {
+          var note = null;
+          if (b.dataset.act === 'rejected') { note = prompt('Reason for rejecting (the member sees this):', ''); if (!note) return; }
+          b.disabled = true;
+          Store.kycReview(b.dataset.id, b.dataset.act, note).then(function (r) { UI.toast(r.ok ? 'KYC ' + b.dataset.act : r.error, r.ok ? 'ok' : 'err'); load(); });
+        };
+      });
+    }
+    function load() { Store.kycList().then(function (r) { if (!r.ok) return UI.toast(r.error, 'err'); items = r.items; draw(); }); }
+    document.getElementById('filter').onchange = draw;
+    load();
+  }
+  });
+</script>
+</body>
+</html>

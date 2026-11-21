@@ -1,0 +1,54 @@
+# =====================================================================
+#  Nothing secret, nothing machine-specific, nothing generated goes to GitHub.
+# =====================================================================
+
+# ---- secrets (the only env files that are committed are the *.example templates)
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+!**/.env.production.example
+auth.json
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+root.cnf
+*.cnf.local
+
+# ---- this machine: private database, test data, build output, tools
+/.tools/
+/release/
+/image.png
+*.sqlite
+*.sqlite-journal
+*.sql.gz
+*.dump
+*.zip
+tokens.txt
+load-tokens.txt
+
+# ---- dependencies and generated files (rebuilt with `composer install`)
+/backend/vendor/
+node_modules/
+/backend/bootstrap/cache/*.php
+/backend/storage/logs/*
+/backend/storage/framework/cache/*
+/backend/storage/framework/sessions/*
+/backend/storage/framework/views/*
+/backend/storage/app/private/*
+/backend/storage/app/public/*
+/backend/storage/app/backups/*
+!/backend/storage/**/.gitignore
+*.log
+.phpunit.result.cache
+
+# ---- editors / OS
+.idea/
+.vscode/
+.claude/
+.DS_Store
+Thumbs.db

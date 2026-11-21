@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Payouts — Admin</title>
+  <link rel="icon" href="../images/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="../images/favicon.png">
+  <link rel="stylesheet" href="../css/fonts.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/panel.css">
+</head>
+<body data-role="admin" data-page="payouts" data-title="Withdrawal Requests" data-base="../">
+<main id="page-content" hidden>
+  <div class="card">
+    <div class="card-head">
+      <h3>Requests</h3>
+      <select id="filter" style="max-width:180px"><option value="pending">Pending</option><option value="">All</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select>
+    </div>
+    <div id="list"></div>
+  </div>
+</main>
+
+<script src="../js/data.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  Store.ready.then(function () {
+  var me = Layout.mount();
+  if (me) {
+    var kind = { pending: 'amber', approved: 'green', rejected: 'red' };
+    function draw() {
+      var f = document.getElementById('filter').value;
+      var list = Store.db.withdrawals.filter(function (w) { return !f || w.status === f; }).sort(function (a, b) { return b.date - a.date; });
+      document.getElementById('list').innerHTML = UI.table(['Date', 'Member', 'Method / account', 'Amount', 'Net payout', 'Status', 'Payout hash', ''],
+        list.map(function (w) {
+          var u = Store.byId(w.userId);
+          var actions = w.status === 'pending'
+            ? '<button class="btn btn-sm btn-success" data-act="approved" data-id="' + w.id + '">Approve</button> <button class="btn btn-sm btn-danger" data-act="rejected" data-id="' + w.id + '">Reject</button>' : '';
+          return [UI.date(w.date), UI.esc(u.name) + '<br><small class="muted">' + UI.esc(u.code) + '</small>',
+            UI.esc(w.method) + '<br><small class="muted">' + UI.esc(w.account) + '</small>', UI.money(w.amount), UI.money(w.net), UI.badge(w.status, kind[w.status]),
+            w.payoutTxid ? '<code style="font-size:.72rem;word-break:break-all">' + UI.esc(w.payoutTxid) + '</code>' : (w.adminNote ? '<small class="muted">' + UI.esc(w.adminNote) + '</small>' : ''), actions];
+        }), 'No requests in this view.');
+      document.querySelectorAll('[data-act]').forEach(function (b) {
+        b.onclick = function () {
+          var w = Store.db.withdrawals.filter(function (x) { return String(x.id) === b.dataset.id; })[0];
+          var txid = null, note = null;
+          if (b.dataset.act === 'approved') {
+            txid = prompt('Send ' + UI.money(w.net) + ' to\n' + w.account + '\n\nthen paste the payout transaction hash here:');
+            if (!txid) return;
+          } else {
+            note = prompt('Reason for rejecting (shown to the member; the amount is refunded):', '');
+            if (note === null) return;
+          }
+          b.disabled = true;
+          Store.processWithdrawal(b.dataset.id, b.dataset.act, (txid || '').trim(), note).then(function (r) { UI.toast(r.ok ? 'Request ' + b.dataset.act : r.error, r.ok ? 'ok' : 'err'); draw(); });
+        };
+      });
+    }
+    document.getElementById('filter').onchange = draw;
+    draw();
+  }
+  });
+</script>
+</body>
+</html>

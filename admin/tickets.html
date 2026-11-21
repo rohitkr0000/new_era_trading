@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tickets — Admin</title>
+  <link rel="icon" href="../images/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="../images/favicon.png">
+  <link rel="stylesheet" href="../css/fonts.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/panel.css">
+  <style>
+    .thread { display: grid; gap: .6rem; margin: .8rem 0; }
+    .msg { padding: .7rem .9rem; border-radius: 12px; background: #eef3ff; max-width: 80%; }
+    .msg.admin { background: #fff8e1; justify-self: end; }
+    .msg small { color: var(--muted); display: block; font-size: .75rem; }
+    .tk { border: 1px solid var(--line); border-radius: 14px; padding: 1rem; margin-bottom: 1rem; }
+  </style>
+</head>
+<body data-role="admin" data-page="tickets" data-title="Support Tickets" data-base="../">
+<main id="page-content" hidden>
+  <div class="card">
+    <div class="card-head">
+      <h3>Tickets</h3>
+      <select id="filter" style="max-width:180px"><option value="open">Open</option><option value="">All</option><option value="closed">Closed</option></select>
+    </div>
+    <div id="list"></div>
+  </div>
+</main>
+
+<script src="../js/data.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  Store.ready.then(function () {
+  var me = Layout.mount();
+  if (me) {
+    function draw() {
+      var f = document.getElementById('filter').value;
+      var list = Store.db.tickets.filter(function (t) { return !f || t.status === f; }).sort(function (a, b) { return b.date - a.date; });
+      document.getElementById('list').innerHTML = list.length ? list.map(function (t) {
+        var u = Store.byId(t.userId);
+        var msg = function (by, text, date) { return '<div class="msg ' + by + '"><small>' + (by === 'admin' ? 'Support' : UI.esc(u.name)) + ' · ' + UI.date(date) + '</small>' + UI.esc(text) + '</div>'; };
+        return '<div class="tk"><div class="row spread"><div><b>' + UI.esc(t.ref) + ' · ' + UI.esc(t.subject) + '</b><br><small class="muted">' + UI.esc(u.name) + ' (' + UI.esc(u.code) + ')</small></div>' +
+          UI.badge(t.status, t.status === 'open' ? 'amber' : 'gray') + '</div>' +
+          '<div class="thread">' + msg('user', t.message, t.date) + t.replies.map(function (r) { return msg(r.by, r.text, r.date); }).join('') + '</div>' +
+          (t.status === 'open' ? '<div class="copy-box"><input placeholder="Write a reply…" data-reply="' + t.id + '"><button class="btn btn-primary btn-sm" data-send="' + t.id + '">Reply</button>' +
+            '<button class="btn btn-ghost btn-sm" data-close="' + t.id + '">Close</button></div>' : '') + '</div>';
+      }).join('') : '<div class="empty">No tickets in this view.</div>';
+      document.querySelectorAll('[data-send]').forEach(function (b) {
+        b.onclick = function () {
+          Store.replyTicket(b.dataset.send, 'admin', document.querySelector('[data-reply="' + b.dataset.send + '"]').value).then(function (r) {
+            UI.toast(r.ok ? 'Reply sent' : r.error, r.ok ? 'ok' : 'err'); if (r.ok) draw();
+          });
+        };
+      });
+      document.querySelectorAll('[data-close]').forEach(function (b) { b.onclick = function () { Store.closeTicket(b.dataset.close).then(function (r) { UI.toast(r.ok ? 'Ticket closed' : r.error, r.ok ? 'ok' : 'err'); draw(); }); }; });
+    }
+    document.getElementById('filter').onchange = draw;
+    draw();
+  }
+  });
+</script>
+</body>
+</html>

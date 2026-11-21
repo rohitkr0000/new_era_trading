@@ -1,0 +1,50 @@
+# =====================================================================
+#  New Era Trading — MariaDB / MySQL settings for a production server (sized for ~1000 users online at once)
+#  Copy into /etc/mysql/mariadb.conf.d/99-neweratrading.cnf (Linux) and restart.
+#  Sized for a 16 GB RAM server where MariaDB has the machine to itself — scale the buffer pool to ~60-70% of RAM.
+# =====================================================================
+[mysqld]
+bind-address                  = 127.0.0.1          # the database is NEVER reachable from the internet
+skip-name-resolve
+local_infile                  = 0                  # no LOAD DATA LOCAL (a classic data-theft path)
+secure_file_priv              = NULL               # no file import/export from SQL
+skip_symbolic_links           = 1
+
+character-set-server          = utf8mb4
+collation-server              = utf8mb4_unicode_ci
+sql_mode                      = STRICT_ALL_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+
+# ---- connections: each PHP-FPM worker holds one only while it runs a request
+max_connections               = 600
+thread_cache_size             = 128
+connect_timeout               = 10
+wait_timeout                  = 120
+interactive_timeout           = 300
+max_connect_errors            = 100000
+max_allowed_packet            = 16M
+
+# ---- InnoDB (the money tables): durable on every commit
+default_storage_engine        = InnoDB
+innodb_flush_log_at_trx_commit= 1                  # never lose a committed deposit / withdrawal
+innodb_buffer_pool_size       = 8G                 # ~60% of RAM
+innodb_buffer_pool_instances  = 8
+innodb_log_file_size          = 1G
+innodb_log_buffer_size        = 64M
+innodb_io_capacity            = 2000               # SSD
+innodb_io_capacity_max        = 4000
+innodb_flush_method           = O_DIRECT
+innodb_lock_wait_timeout      = 15
+table_open_cache              = 4000
+tmp_table_size                = 128M
+max_heap_table_size           = 128M
+
+# ---- watch for slow queries
+slow_query_log                = 1
+slow_query_log_file           = /var/log/mysql/slow.log
+long_query_time               = 0.5
+
+# ---- binary log: lets you restore to any second (point-in-time recovery) on top of the nightly dump
+log_bin                       = /var/lib/mysql/binlog
+binlog_format                 = ROW
+expire_logs_days              = 7
+sync_binlog                   = 1

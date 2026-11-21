@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>New Era Trading — neweratrading.net</title>
+  <link rel="icon" href="images/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="images/favicon.png">
+  <meta name="theme-color" content="#040c24">
+  <meta name="description" content="New Era Trading — global financial trading platform. Trade smart, grow together: 5% ROI on trading days, 5% direct referral, 5% retopup income, 12-level income. Join from $5.">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/home.css">
+  <script>document.documentElement.classList.add('js');</script>
+</head>
+<body class="home" id="top">
+
+<!-- preloader / progress / cursor glow -->
+<div class="pre" id="pre"><div style="text-align:center"><img class="logo-img" src="images/logo.png" alt="New Era Trading"><div class="bar"><i></i></div></div></div>
+<div class="prog" id="prog"></div>
+<div class="glow-cursor" id="glow"></div>
+
+<!-- ================= HEADER ================= -->
+<header class="hd" id="hd">
+  <div class="wrap hd-in">
+    <a class="brand" href="#top"><img class="logo-img" src="images/logo.png" alt="New Era Trading logo"><span class="brand-t">New Era Trading<small>neweratrading.net</small></span></a>
+    <nav id="nav">
+      <a href="#top" class="on">Home</a>
+      <a href="#about">About</a>
+      <a href="#plan">Plan</a>
+      <a href="#levels">Levels</a>
+      <a href="#rules">Withdrawals</a>
+      <a href="calculator.html">Calculator</a>
+      <a href="#faq">FAQ</a>
+      <span class="auth" id="navAuth">
+        <a href="login.html">Login</a>
+        <a class="hbtn pri sm mag" href="register.html">Join now</a>
+      </span>
+    </nav>
+    <button class="burger" id="burger" aria-label="Toggle menu">☰</button>
+  </div>
+</header>
+
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <canvas class="net-canvas" id="net"></canvas>
+  <div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
+  <div class="bgtext" data-parallax="0.12" aria-hidden="true">New Era<br>Trading</div>
+
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow"><i></i> Global financial trading platform</span>
+      <h1>
+        <span class="ln" style="--n:0"><span>Trade smart</span></span>
+        <span class="ln" style="--n:1"><span class="grad">Grow</span></span>
+        <span class="ln" style="--n:2"><span>together</span></span>
+      </h1>
+      <div class="type">Earn <b id="typed"></b><span class="caret"></span></div>
+      <p class="lead">A modern trading platform designed to create consistent growth opportunities for everyone. Join from just $5.</p>
+      <div class="hero-cta">
+        <a class="hbtn pri mag" href="register.html">Create free account →</a>
+        <button class="watch" id="seeHow"><span class="play">▶</span>See how it works</button>
+      </div>
+    </div>
+
+    <div class="viz" aria-hidden="true">
+      <svg viewBox="0 0 460 440">
+        <defs>
+          <linearGradient id="eg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffc933"/><stop offset="1" stop-color="#1e6cff"/></linearGradient>
+          <radialGradient id="gg" cx=".35" cy=".3"><stop offset="0" stop-color="#fff0a8"/><stop offset="1" stop-color="#f59e0b"/></radialGradient>
+          <radialGradient id="ng" cx=".35" cy=".3"><stop offset="0" stop-color="#8fd0ff"/><stop offset="1" stop-color="#1e6cff"/></radialGradient>
+        </defs>
+        <g class="edges">
+          <path class="edge" d="M230 60 L120 170"/><path class="edge" d="M230 60 L340 170"/>
+          <path class="edge" d="M120 170 L60 295"/><path class="edge" d="M120 170 L180 295"/>
+          <path class="edge" d="M340 170 L280 295"/><path class="edge" d="M340 170 L400 295"/>
+          <path class="edge" d="M60 295 L30 400"/><path class="edge" d="M60 295 L95 400"/>
+          <path class="edge" d="M400 295 L365 400"/><path class="edge" d="M400 295 L430 400"/>
+        </g>
+        <!-- commissions flowing up the tree -->
+        <circle class="coin-dot" r="5"><animateMotion dur="2.8s" repeatCount="indefinite" path="M60 295 L120 170 L230 60"/></circle>
+        <circle class="coin-dot" r="5"><animateMotion dur="3.2s" begin="-1s" repeatCount="indefinite" path="M400 295 L340 170 L230 60"/></circle>
+        <circle class="coin-dot" r="4"><animateMotion dur="2.4s" begin="-.6s" repeatCount="indefinite" path="M280 295 L340 170 L230 60"/></circle>
+        <circle class="coin-dot" r="4"><animateMotion dur="3s" begin="-2s" repeatCount="indefinite" path="M180 295 L120 170 L230 60"/></circle>
+        <g class="nd you" style="--i:0"><circle class="halo" cx="230" cy="60" r="30"/><circle class="core" cx="230" cy="60" r="30" style="fill:url(#gg)"/><text x="230" y="65">YOU</text></g>
+        <g class="nd" style="--i:1"><circle class="halo" cx="120" cy="170" r="24"/><circle class="core" cx="120" cy="170" r="24"/><text x="120" y="175">L</text></g>
+        <g class="nd" style="--i:2"><circle class="halo" cx="340" cy="170" r="24"/><circle class="core" cx="340" cy="170" r="24"/><text x="340" y="175">R</text></g>
+        <g class="nd" style="--i:3"><circle class="core" cx="60" cy="295" r="19"/></g>
+        <g class="nd" style="--i:4"><circle class="core" cx="180" cy="295" r="19"/></g>
+        <g class="nd" style="--i:5"><circle class="core" cx="280" cy="295" r="19"/></g>
+        <g class="nd" style="--i:6"><circle class="core" cx="400" cy="295" r="19"/></g>
+        <g class="nd" style="--i:7"><circle class="core" cx="30" cy="400" r="14"/></g>
+        <g class="nd" style="--i:8"><circle class="core" cx="95" cy="400" r="14"/></g>
+        <g class="nd" style="--i:9"><circle class="core" cx="365" cy="400" r="14"/></g>
+        <g class="nd" style="--i:10"><circle class="core" cx="430" cy="400" r="14"/></g>
+      </svg>
+      <div class="float-card fc1"><span class="ic">📈</span><div><b>+5% ROI</b><small>credited this trading day</small></div></div>
+      <div class="float-card fc2"><span class="ic">👤</span><div><b>+5% referral</b><small>new member joined your team</small></div></div>
+      <div class="float-card fc3"><span class="ic">🏆</span><div><b>12 levels</b><small>on every team investment</small></div></div>
+    </div>
+  </div>
+  <span class="scroll-hint" aria-hidden="true"></span>
+</section>
+
+<!-- tilted marquee -->
+<div class="bandwrap" aria-hidden="true"><div class="band tilt-a">
+  <div class="mq" id="mq1"></div>
+</div></div>
+
+<!-- ================= ABOUT ================= -->
+<section class="about" id="about">
+  <div class="wrap about-grid">
+    <div data-r="left">
+      <div class="mock" id="mock">
+        <div class="mock-top"><i></i><i></i><i></i><span>member dashboard</span></div>
+        <div class="mock-stats">
+          <div><small>Invested</small><b data-count="100" data-prefix="$">$0</b></div>
+          <div><small>ROI / trading day</small><b data-count="5" data-prefix="$">$0</b></div>
+          <div><small>Levels</small><b data-count="12">0</b></div>
+        </div>
+        <div class="mock-bars" id="mockBars"></div>
+        <span class="chip">+ $5.00 ROI credited</span>
+        <span class="chip chip2">Level 1 · 2%</span>
+      </div>
+    </div>
+    <div>
+      <div class="sec-head left" style="margin-bottom:1.4rem">
+        <span class="kicker">About New Era Trading</span>
+        <h2 class="split">Trade Smart. <em>Grow</em> Together.</h2>
+      </div>
+      <p data-r style="--d:100">New Era Trading is a global financial trading platform. Start from $5, earn ROI on every trading day, and grow with direct referral, retopup and 12-level income — all tracked in your own dashboard.</p>
+      <ul class="checks" data-r style="--d:200">
+        <li>5% ROI on trading days</li><li>5% direct referral income</li>
+        <li>5% retopup income</li><li>12-level income</li>
+      </ul>
+      <a class="hbtn pri mag" href="register.html" data-r style="--d:300">Join the network →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TRACKER ================= -->
+<section class="tracker">
+  <div class="bgtext sec-bgtext" data-parallax="0.08" aria-hidden="true">Net Tracker</div>
+  <div class="wrap">
+    <div class="sec-head"><span class="kicker">Everything tracked</span><h2 class="split">Mastering Your <em>Network</em> Growth</h2></div>
+    <div class="cards3">
+      <div data-r style="--d:0"><div class="tilt gcard">
+        <span class="tag">Genealogy</span>
+        <div class="gv">
+          <svg viewBox="0 0 200 150" width="82%"><g stroke="#ffc933" stroke-width="2" fill="none" stroke-dasharray="5 5" class="edgeg"><path d="M100 22 L50 70 M100 22 L150 70 M50 70 L28 120 M50 70 L72 120 M150 70 L128 120 M150 70 L172 120"/></g>
+            <g fill="#1e6cff"><circle cx="100" cy="22" r="13"/><circle cx="50" cy="70" r="11"/><circle cx="150" cy="70" r="11"/></g>
+            <g fill="#ffc933"><circle cx="28" cy="120" r="8"/><circle cx="72" cy="120" r="8"/><circle cx="128" cy="120" r="8"/><circle cx="172" cy="120" r="8"/></g></svg>
+        </div>
+        <h3>Team &amp; Genealogy</h3><p>Watch your team grow level by level, see every member in your tree and track your 12-level income.</p>
+        <span class="arrow">→</span>
+      </div></div>
+      <div data-r style="--d:150"><div class="tilt gcard">
+        <span class="tag">Wallet</span>
+        <div class="gv"><div class="coin">$</div></div>
+        <h3>5% ROI on Trading Days</h3><p>Every package earns 5% each trading day, Monday to Friday — credited straight to your income wallet.</p>
+        <span class="arrow">→</span>
+      </div></div>
+      <div data-r style="--d:300"><div class="tilt gcard">
+        <span class="tag">Referrals</span>
+        <div class="gv"><div class="token">neweratrading.net/register?sponsor=<b style="color:#ffc933">NET1001</b>&amp;leg=left</div></div>
+        <h3>Smart Referral Links</h3><p>Share a personal link for your left or right leg. New members are placed automatically under you.</p>
+        <span class="arrow">→</span>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SMART PILLS ================= -->
+<section class="smart">
+  <div class="wrap">
+    <span class="emoji" data-r="zoom">😎</span>
+    <div class="sec-head" style="margin-bottom:0"><h2 class="split">Building Your Team <em>Smartly</em></h2></div>
+    <div class="pills" id="pills"></div>
+  </div>
+</section>
+
+<!-- ================= WHY ================= -->
+<section class="why">
+  <div class="bgtext sec-bgtext" data-parallax="0.08" aria-hidden="true">Why Choose Us</div>
+  <div class="wrap why-grid">
+    <div data-r="left">
+      <div class="blob"><div class="ring"></div><div class="ring r2"></div><div class="shape"><canvas id="chart"></canvas></div></div>
+    </div>
+    <div>
+      <div class="sec-head left" style="margin-bottom:1.6rem"><span class="kicker">The trading graph</span><h2 class="split">A Weekly <em>Market</em> View</h2></div>
+      <p data-r>Trading is active Monday to Friday and paused on Saturday and Sunday. Every rate and rule is the same for every member and recorded in your ledger.</p>
+      <div class="feat" data-r style="--d:100"><span class="fi">📅</span><div><h4>Trading days: Mon – Fri</h4><p>ROI is credited on trading days only. Weekends are off.</p></div></div>
+      <div class="feat" data-r style="--d:200"><span class="fi">⏰</span><div><h4>Withdrawal window: 10 AM – 2 PM</h4><p>Request payouts on trading days within the window.</p></div></div>
+      <div class="feat" data-r style="--d:300"><span class="fi">✅</span><div><h4>Received within 24 hours</h4><p>Every request is processed with a 24-hour receipt target.</p></div></div>
+      <p class="sample" data-r style="text-align:left">Illustrative chart for presentation only. It does not show actual or guaranteed performance.</p>
+      <a class="hbtn pri mag" href="register.html" data-r style="--d:400">Get started →</a>
+    </div>
+  </div>
+</section>
+
+<!-- big outline marquee -->
+<div class="band out rev" aria-hidden="true"><div class="mq" id="mq2"></div></div>
+
+<!-- ================= COMPENSATION ================= -->
+<section class="plan" id="plan">
+  <div class="bgtext sec-bgtext" data-parallax="0.08" aria-hidden="true">Income</div>
+  <div class="wrap">
+    <div class="sec-head"><span class="kicker">Income streams</span><h2 class="split">Three <em>Income</em> Streams</h2><p data-r>Three 5% income categories in the New Era Trading model.</p></div>
+    <div class="coins3">
+      <div class="coin3-w" data-r style="--d:0"><div class="coin3 gold"><small>ROI</small><b id="cpRoi">5%</b><small>New Era</small></div><span class="coin3-tag gold">ROI</span><p>5% of your package on every trading day.</p></div>
+      <div class="coin3-w" data-r style="--d:150"><div class="coin3 teal"><small>Referrals</small><b id="cpDirect">5%</b><small>New Era</small></div><span class="coin3-tag teal">Referrals</span><p>Direct referral income on members you sponsor.</p></div>
+      <div class="coin3-w" data-r style="--d:300"><div class="coin3 gold"><small>Retopup</small><b id="cpRetopup">5%</b><small>New Era</small></div><span class="coin3-tag gold">Retopup</span><p>Retopup income when your directs buy again.</p></div>
+    </div>
+    <div class="facts" id="facts"></div>
+  </div>
+</section>
+
+<!-- ================= 12-LEVEL INCOME ================= -->
+<section class="levels" id="levels">
+  <div class="bgtext sec-bgtext" data-parallax="0.08" aria-hidden="true">12 Levels</div>
+  <div class="wrap">
+    <div class="sec-head"><span class="kicker">12-level income</span><h2 class="split">12 Levels. Five <em>Income</em> Bands.</h2><p data-r id="lvLead">Level income is paid on every investment made by your team.</p></div>
+    <div class="lv-grid">
+      <div class="lv-pyr" data-r="left" id="lvPyr"></div>
+      <div class="lv-list" data-r="right" id="lvList"></div>
+    </div>
+    <div class="lv-bands" id="lvBands"></div>
+  </div>
+</section>
+
+<!-- ================= MULTIPLIER ================= -->
+<section class="multi">
+  <div class="wrap">
+    <div class="sec-head"><span class="kicker">Multiplier plan</span><h2 class="split"><em>2X</em> Non-working · <em>5X</em> Working</h2><p data-r>Your earning cap as a multiple of the amount you have invested.</p></div>
+    <div class="mx-grid">
+      <div class="mx gold" data-r style="--d:0"><span class="mx-tag">Non-working</span><b id="mxN">2X</b><div class="bars" id="barsN"></div><p>Until your level-1 business reaches <span class="mxMult">5</span>X your own investment you can earn and withdraw up to <span id="mxN2">2X</span> of your invested amount — even if you only invest and never refer.</p></div>
+      <div class="mx teal" data-r style="--d:150"><span class="mx-tag">Working</span><b id="mxW">5X</b><div class="bars" id="barsW"></div><p>When the business of your level-1 team (what your direct referrals invest) reaches <span class="mxMult">5</span>X your own investment, your cap rises to <span id="mxW2">5X</span>. Having <span id="mxDirects">12</span> active direct members also unlocks all 12 income levels.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= JOINING & WITHDRAWAL + WEEKLY SCHEDULE ================= -->
+<section class="rules" id="rules">
+  <div class="bgtext sec-bgtext" data-parallax="0.08" aria-hidden="true">Withdrawals</div>
+  <div class="wrap">
+    <div class="sec-head"><span class="kicker">Joining &amp; withdrawal</span><h2 class="split">Simple Joining &amp; <em>Withdrawal</em> Rules</h2><p data-r>Minimum amounts, withdrawal hours and expected receipt time.</p></div>
+    <div class="tk-grid">
+      <article class="tk gold" data-r="left">
+        <span class="tk-wm" aria-hidden="true">$</span>
+        <div class="tk-main">
+          <span class="tk-ic">🚀</span>
+          <small>Minimum joining</small>
+          <div class="tk-amt"><b id="ruJoin">$5</b><em>USD</em></div>
+          <p>Entry amount — start with any package from <span id="ruJoin2">$5</span>.</p>
+        </div>
+        <div class="tk-stub"><span>Join</span></div>
+      </article>
+      <article class="tk teal" data-r="right">
+        <span class="tk-wm" aria-hidden="true">$</span>
+        <div class="tk-main">
+          <span class="tk-ic">💸</span>
+          <small>Minimum withdrawal</small>
+          <div class="tk-amt"><b id="ruWd">$5</b><em>USD</em></div>
+          <p id="ruWdNote">Then in multiples of $5.</p>
+        </div>
+        <div class="tk-stub"><span>Withdraw</span></div>
+      </article>
+    </div>
+    <div class="ladder" data-r>
+      <header>
+        <div><small>Withdrawal amounts</small><b id="ladTitle">Withdraw in multiples of $5</b></div>
+        <span class="ladder-pill">✓ Every step is a valid amount</span>
+      </header>
+      <div class="ladder-bars" id="ruCoins"></div>
+    </div>
+    <div class="ru-time" data-r>
+      <div><span>🔓</span><b id="ruOpen">10:00 AM</b><small>Window opens</small></div>
+      <div><span>🔒</span><b id="ruClose">2:00 PM</b><small>Window closes</small></div>
+      <div><span>✅</span><b id="ruRecv">24 hours</b><small>Receipt target</small></div>
+    </div>
+    <div class="sec-head" style="margin-top:4rem"><span class="kicker">Weekly schedule</span><h2 class="split">Weekend <em>Trading</em> Break</h2><p data-r>Saturday and Sunday are non-trading days; withdrawals are also unavailable.</p></div>
+    <div class="wk" id="wk"></div>
+  </div>
+</section>
+
+<!-- ================= STEPS ================= -->
+<section class="steps-sec">
+  <div class="wrap">
+    <div class="sec-head"><span class="kicker">Member activity flow</span><h2 class="split">Join · Refer · Retopup · <em>Track</em></h2></div>
+    <div class="steps2 four" id="how">
+      <div class="step2" data-r style="--d:0"><div class="n">$5</div><h3>Join</h3><p>Start from $5 with your sponsor's code.</p></div>
+      <div class="step2" data-r style="--d:120"><div class="n">5%</div><h3>Refer</h3><p>Earn 5% direct referral income on every member you sponsor.</p></div>
+      <div class="step2" data-r style="--d:240"><div class="n">5%</div><h3>Retopup</h3><p>Earn 5% retopup income when your directs buy again.</p></div>
+      <div class="step2" data-r style="--d:360"><div class="n">12</div><h3>Track</h3><p>Follow your 12-level income in your dashboard.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section class="faq" id="faq">
+  <div class="wrap faq-grid">
+    <div data-r="left"><div class="orbit"><div class="o o2"><i>💸</i></div><div class="o o1"><i>🌳</i></div><div class="core">?</div></div></div>
+    <div>
+      <div class="sec-head left" style="margin-bottom:1.6rem"><span class="kicker">FAQ</span><h2 class="split">Frequently Asked <em>Questions</em></h2></div>
+      <div class="acc" id="acc">
+        <div class="acc-item open" data-r style="--d:0"><button class="acc-q">What is the minimum to join?<i>+</i></button><div class="acc-a"><p>You can join from $5 with a sponsor's code, and every joining or retopup amount is in multiples of $5 (5, 10, 15, 20…). All amounts are in US dollars. Each email address and mobile number can be used for one account only.</p></div></div>
+        <div class="acc-item" data-r style="--d:60"><button class="acc-q">When is ROI credited?<i>+</i></button><div class="acc-a"><p>5% of each package is credited on every trading day, Monday to Friday. Saturday and Sunday are non-trading days, so no ROI is credited on weekends.</p></div></div>
+        <div class="acc-item" data-r style="--d:120"><button class="acc-q">How does the 12-level income work?<i>+</i></button><div class="acc-a"><p>You earn a share of every investment made by your team: level 1 2%, level 2 1%, and 0.2% for each of levels 3 to 12. For example, 100 people on your first level investing $5 each ($500) pay you $10. Level 1 unlocks with 1 active direct referral, level 2 with 2, and so on — you need 12 direct referrals to earn from all 12 levels. You can refer any number of people and earn 5% on each of them.</p></div></div>
+        <div class="acc-item" data-r style="--d:180"><button class="acc-q">What do 2X and 5X mean?<i>+</i></button><div class="acc-a"><p>They are earning caps. If you only invest and do not build business you can earn and withdraw up to 2X your invested amount. When your level-1 business (the amount your direct referrals invest) reaches 5X your own investment, the cap becomes 5X. Retopping up raises your cap, and the business target with it.</p></div></div>
+        <div class="acc-item" data-r style="--d:240"><button class="acc-q">When can I withdraw?<i>+</i></button><div class="acc-a"><p>From $5 in multiples of $5, Monday to Friday between 10 AM and 2 PM (IST). Payouts are expected within 24 hours. Withdrawals are unavailable on weekends.</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FEATURES ================= -->
+<section class="feats">
+  <div class="wrap">
+    <div class="sec-head"><span class="kicker">Platform</span><h2 class="split">Everything In <em>One Place</em></h2></div>
+    <div class="fgrid">
+      <div data-r style="--d:0"><div class="tilt gcard ft"><span class="ic">🌳</span><h3>Team &amp; genealogy</h3><p>See your team level by level and in a live tree view.</p></div></div>
+      <div data-r style="--d:100"><div class="tilt gcard ft"><span class="ic">👛</span><h3>Wallet &amp; ledger</h3><p>Every credit and withdrawal is logged line by line.</p></div></div>
+      <div data-r style="--d:200"><div class="tilt gcard ft"><span class="ic">📦</span><h3>Retopup anytime</h3><p>Add a new package from $5 — your sponsor earns 5% retopup income.</p></div></div>
+      <div data-r style="--d:0"><div class="tilt gcard ft"><span class="ic">🛡️</span><h3>Admin panel</h3><p>Manage members, approve payouts and tune the plan.</p></div></div>
+      <div data-r style="--d:100"><div class="tilt gcard ft"><span class="ic">💬</span><h3>Support tickets</h3><p>Raise a ticket and chat with the team inside your hub.</p></div></div>
+      <div data-r style="--d:200"><div class="tilt gcard ft"><span class="ic">📱</span><h3>Fully responsive</h3><p>Works on phones, tablets and desktops.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= LEADERS ================= -->
+<section class="leaders" id="leaders">
+  <div class="bgtext sec-bgtext" data-parallax="0.08" aria-hidden="true">Leaders</div>
+  <div class="wrap">
+    <div class="sec-head"><span class="kicker">Top leaders</span><h2 class="split">Trusted <em>Network</em> Leaders</h2><p data-r>The biggest teams in the network right now (public data only).</p></div>
+    <div class="lgrid" id="lgrid"></div>
+  </div>
+</section>
+
+<!-- ================= COUNTERS ================= -->
+<section class="counters">
+  <div class="wrap cgrid" id="cgrid">
+    <div data-r="zoom" style="--d:0"><b data-count="0" id="cMembers">0</b><span>Members</span></div>
+    <div data-r="zoom" style="--d:120"><b data-count="0" id="cActive">0</b><span>Active members</span></div>
+    <div data-r="zoom" style="--d:240"><b data-count="0" id="cOrders">0</b><span>Packages activated</span></div>
+    <div data-r="zoom" style="--d:360"><b data-count="0" id="cPaid" data-prefix="$">$0</b><span>Commissions paid</span></div>
+  </div>
+</section>
+
+<!-- ================= TESTIMONIALS ================= -->
+<section class="testi">
+  <div class="bgtext sec-bgtext" data-parallax="0.08" aria-hidden="true">Testimonial</div>
+  <div class="wrap">
+    <div class="sec-head"><span class="kicker">Testimonials</span><h2 class="split">Our Members <em>Say</em> It Best</h2></div>
+    <div class="slider" id="slider">
+      <div class="slide on"><div class="q">“</div><blockquote>The genealogy tree makes it easy to see exactly where my team stands, and seeing every commission in the ledger builds real trust.</blockquote><div class="stars">★★★★★</div><div class="who">Aarav M.<small>Gold member</small></div></div>
+      <div class="slide"><div class="q">“</div><blockquote>Sharing my left and right links and watching new members drop into place is simple. The dashboard is clean and fast.</blockquote><div class="stars">★★★★★</div><div class="who">Sara K.<small>Silver member</small></div></div>
+      <div class="slide"><div class="q">“</div><blockquote>Withdrawal requests are clear and the status updates are instant. I always know what I earned and why.</blockquote><div class="stars">★★★★★</div><div class="who">Zoe E.<small>Platinum member</small></div></div>
+    </div>
+    <div class="dots" id="dots"></div>
+    <p class="sample">Sample testimonials for the template — replace with real member feedback.</p>
+  </div>
+</section>
+
+<!-- ================= CTA ================= -->
+<section class="cta">
+  <div class="wrap">
+    <div class="cta-box" data-r="zoom">
+      <h2>Seeking A Trusted Network Partner?</h2>
+      <p>Create your account in under a minute and start building your team today.</p>
+      <a class="hbtn mag" href="register.html">Join now →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer class="foot">
+  <div class="wrap">
+    <div class="fcols">
+      <div><a class="brand" href="#top"><img class="logo-img" src="images/logo.png" alt="New Era Trading logo"><span class="brand-t">New Era Trading<small>neweratrading.net</small></span></a><p style="margin-top:1rem;max-width:20rem">A complete network-marketing platform: binary tree, commissions, wallet and admin tools.</p></div>
+      <div><h4>Navigate</h4><ul><li><a href="#about">About</a></li><li><a href="#plan">Income plan</a></li><li><a href="#levels">12-level income</a></li><li><a href="#rules">Withdrawal rules</a></li><li><a href="calculator.html">Calculator</a></li><li><a href="#faq">FAQ</a></li></ul></div>
+      <div><h4>Members</h4><ul><li><a href="login.html">Login</a></li><li><a href="register.html">Join now</a></li><li><a href="user/dashboard.html">Member hub</a></li><li><a href="#leaders">Top leaders</a></li></ul></div>
+      <div><h4>Admin</h4><ul><li><a href="login.html?admin=1">Admin login</a></li><li><a href="#how">How it works</a></li></ul></div>
+    </div>
+    <div class="legal">
+      <span>© <span id="year"></span> New Era Trading (neweratrading.net). All rights reserved.</span>
+      <p>Income examples are illustrative only. Earnings depend on real product sales and individual effort; no income is guaranteed. Make sure your business complies with the direct-selling regulations of your country.</p>
+    </div>
+  </div>
+</footer>
+<button class="totop" id="totop" aria-label="Back to top">↑</button>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script src="js/home.js"></script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reset password — New Era Trading</title>
+  <link rel="icon" href="images/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="images/favicon.png">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<div class="auth-wrap">
+  <aside class="auth-side">
+    <a class="brand" href="index.html"><img class="logo-img" src="images/logo.png" alt="New Era Trading">New Era Trading</a>
+    <h2>Forgot your password?</h2>
+    <ul>
+      <li>We e-mail you a 6-digit code</li>
+      <li>The code works once and expires in 10 minutes</li>
+      <li>After a reset, every device is signed out</li>
+    </ul>
+  </aside>
+
+  <main class="auth-main">
+    <div class="auth-box">
+      <h1>Reset password</h1>
+
+      <div class="form-error" id="err" hidden></div>
+      <div class="form-ok" id="ok" hidden style="background:#e7f8ee;color:#067647;border-radius:10px;padding:.7rem .9rem;margin-bottom:1rem;font-size:.92rem"></div>
+
+      <form id="f1" novalidate>
+        <p class="muted">Enter the e-mail you registered with.</p>
+        <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="username" required></div>
+        <button class="btn btn-primary btn-block" type="submit">Send verification code</button>
+      </form>
+
+      <form id="f2" novalidate hidden>
+        <p class="muted" id="sentMsg"></p>
+        <div class="field"><label for="otp">6-digit code</label><input id="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="123456" required></div>
+        <div class="field"><label for="pw">New password</label><input id="pw" type="password" minlength="8" autocomplete="new-password" required><div class="hint">At least 8 characters, with letters and digits.</div></div>
+        <div class="field"><label for="pw2">Confirm new password</label><input id="pw2" type="password" minlength="6" autocomplete="new-password" required></div>
+        <button class="btn btn-primary btn-block" type="submit">Set new password</button>
+        <p class="muted small mt"><a href="#" id="again">Send a new code</a></p>
+      </form>
+
+      <p class="muted small mt"><a href="login.html">Back to sign in</a></p>
+    </div>
+  </main>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script>
+  Store.ready.then(function () {
+    var f1 = document.getElementById('f1'), f2 = document.getElementById('f2'), err = document.getElementById('err'), ok = document.getElementById('ok');
+    var msg = function (e, o) { err.textContent = e || ''; err.hidden = !e; ok.textContent = o || ''; ok.hidden = !o; };
+    var email = '';
+
+    function send(btn) {
+      btn.disabled = true; msg('');
+      return Store.forgotPassword(email).then(function (r) {
+        btn.disabled = false;
+        if (!r.ok) return msg(r.error);
+        f1.hidden = true; f2.hidden = false;
+        document.getElementById('sentMsg').textContent = 'If ' + email + ' has an account, a 6-digit code was just sent to it from New Era Trading. Check your inbox and spam folder.';
+        document.getElementById('otp').focus();
+      });
+    }
+    f1.addEventListener('submit', function (e) {
+      e.preventDefault();
+      email = f1.email.value.trim().toLowerCase();
+      if (!/^\S+@\S+\.\S+$/.test(email)) return msg('Enter a valid e-mail address.');
+      send(f1.querySelector('button'));
+    });
+    document.getElementById('again').addEventListener('click', function (e) {
+      e.preventDefault();
+      send(f2.querySelector('button')).then(function () { msg('', 'A new code was requested. Only the newest code works.'); });
+    });
+    f2.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var otp = f2.otp.value.trim();
+      if (!/^\d{6}$/.test(otp)) return msg('Enter the 6-digit code from the e-mail.');
+      if (!/^(?=.*[A-Za-z])(?=.*[0-9]).{8,}$/.test(f2.pw.value)) return msg('Password must be at least 8 characters with letters and digits.');
+      if (f2.pw.value !== f2.pw2.value) return msg('The two passwords do not match.');
+      var btn = f2.querySelector('button[type=submit]'); btn.disabled = true; msg('');
+      Store.resetPassword(email, otp, f2.pw.value).then(function (r) {
+        btn.disabled = false;
+        if (!r.ok) return msg(r.error);
+        f2.hidden = true;
+        msg('', 'Password updated. All devices were signed out. Redirecting to sign in…');
+        setTimeout(function () { location.href = 'login.html'; }, 2200);
+      });
+    });
+  });
+</script>
+</body>
+</html>

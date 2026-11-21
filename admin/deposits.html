@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Deposits — Admin</title>
+  <link rel="icon" href="../images/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="../images/favicon.png">
+  <link rel="stylesheet" href="../css/fonts.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/panel.css">
+</head>
+<body data-role="admin" data-page="deposits" data-title="USDT Deposits" data-base="../">
+<main id="page-content" hidden>
+  <div class="card">
+    <div class="card-head">
+      <h3>Deposit requests</h3>
+      <select id="filter" style="max-width:180px"><option value="pending">Pending</option><option value="">All</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select>
+    </div>
+    <p class="hint">With an <code>ETHERSCAN_API_KEY</code> every hash is checked on the blockchain (USDT sent to the company address, amount confirmed). Without it, verify each hash on bscscan.com before approving. Approval credits the member's purchase wallet.</p>
+    <div id="list"></div>
+  </div>
+</main>
+
+<script src="../js/data.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  Store.ready.then(function () {
+  var me = Layout.mount();
+  if (me) {
+    var kind = { pending: 'amber', approved: 'green', rejected: 'red' };
+    function draw() {
+      var f = document.getElementById('filter').value;
+      var list = Store.db.deposits.filter(function (d) { return !f || d.status === f; }).sort(function (a, b) { return b.date - a.date; });
+      document.getElementById('list').innerHTML = UI.table(['Date', 'Member', 'Amount', 'Network', 'Transaction hash', 'Blockchain check', 'Status', ''],
+        list.map(function (d) {
+          var u = Store.byId(d.userId);
+          var actions = d.status === 'pending'
+            ? '<button class="btn btn-sm btn-success" data-act="approved" data-id="' + d.id + '">Approve</button> <button class="btn btn-sm btn-danger" data-act="rejected" data-id="' + d.id + '">Reject</button> <button class="btn btn-sm" data-recheck="' + d.id + '">Re-check</button>' : '';
+          var vk = { verified: 'green', mismatch: 'amber', failed: 'red', unchecked: 'amber' };
+          var chain = d.verified ? UI.badge(d.verified, vk[d.verified]) + '<br><small class="muted">' + UI.esc(d.verifyNote || '') + '</small>' : '<small class="muted">not checked</small>';
+          return [UI.date(d.date), UI.esc(u.name) + '<br><small class="muted">' + UI.esc(u.code) + '</small>', UI.money(d.amount), UI.esc(d.network),
+            '<code style="font-size:.75rem;word-break:break-all">' + UI.esc(d.txnId) + '</code>', chain, UI.badge(d.status, kind[d.status]), actions];
+        }), 'No deposits in this view.');
+      document.querySelectorAll('[data-recheck]').forEach(function (b) {
+        b.onclick = function () {
+          b.disabled = true;
+          Store.recheckDeposit(b.dataset.recheck).then(function (r) { UI.toast(r.ok ? 'Checked: ' + (r.status || 'done') : r.error, r.ok ? 'ok' : 'err'); draw(); });
+        };
+      });
+      document.querySelectorAll('[data-act]').forEach(function (b) {
+        b.onclick = function () {
+          b.disabled = true;
+          Store.processDeposit(b.dataset.id, b.dataset.act).then(function (r) { UI.toast(r.ok ? 'Deposit ' + b.dataset.act : r.error, r.ok ? 'ok' : 'err'); draw(); });
+        };
+      });
+    }
+    document.getElementById('filter').onchange = draw;
+    draw();
+  }
+  });
+</script>
+</body>
+</html>

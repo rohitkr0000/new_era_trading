@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Audit Log — Admin</title>
+  <link rel="icon" href="../images/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="../images/favicon.png">
+  <link rel="stylesheet" href="../css/fonts.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/panel.css">
+</head>
+<body data-role="admin" data-page="audit" data-title="Audit Log" data-base="../">
+<main id="page-content" hidden>
+  <div class="card">
+    <div class="card-head">
+      <h3>Who did what</h3>
+      <div class="row" style="gap:.5rem">
+        <select id="action" style="max-width:190px">
+          <option value="">All actions</option><option value="auth.">Sign-ins &amp; passwords</option><option value="withdrawal.">Withdrawals</option>
+          <option value="deposit.">Deposits</option><option value="kyc.">KYC</option><option value="settings.">Settings</option><option value="member.">Member blocks</option>
+        </select>
+        <input id="q" placeholder="Search name, e-mail, IP…" style="max-width:220px">
+      </div>
+    </div>
+    <p class="hint">An append-only trail of sign-ins, money requests and every admin action, with the IP address. Passwords, PINs and codes are never stored here.</p>
+    <div id="list"></div>
+  </div>
+</main>
+
+<script src="../js/data.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  Store.ready.then(function () {
+  var me = Layout.mount();
+  if (me) {
+    var bad = /failed|block|reject/;
+    function metaText(m) {
+      if (!m) return '';
+      return Object.keys(m).map(function (k) {
+        var v = m[k];
+        if (v && typeof v === 'object') v = (v.from !== undefined ? JSON.stringify(v.from) + ' → ' + JSON.stringify(v.to) : JSON.stringify(v));
+        return k + ': ' + v;
+      }).join(' · ');
+    }
+    function load() {
+      Store.auditLog({ action: document.getElementById('action').value, q: document.getElementById('q').value.trim() }).then(function (r) {
+        if (!r.ok) return UI.toast(r.error, 'err');
+        document.getElementById('list').innerHTML = UI.table(['Time', 'Who', 'Action', 'Target', 'Details', 'IP'], r.items.map(function (a) {
+          return [new Date(a.date).toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }), UI.esc(a.actor || '—'), UI.badge(a.action, bad.test(a.action) ? 'red' : 'blue'), UI.esc(a.target || ''),
+            '<small>' + UI.esc(metaText(a.meta)) + '</small>', '<code>' + UI.esc(a.ip || '') + '</code>'];
+        }), 'No matching entries.');
+      });
+    }
+    var t;
+    document.getElementById('action').onchange = load;
+    document.getElementById('q').oninput = function () { clearTimeout(t); t = setTimeout(load, 350); };
+    load();
+  }
+  });
+</script>
+</body>
+</html>

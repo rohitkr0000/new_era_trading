@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Member Hub — New Era Trading</title>
+  <link rel="icon" href="../images/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="../images/favicon.png">
+  <meta name="theme-color" content="#061230">
+  <link rel="stylesheet" href="../css/fonts.css">
+  <link rel="stylesheet" href="../css/member.css">
+</head>
+<body class="member">
+  <!-- The whole member hub is rendered by js/member/*: shell.js builds the layout, pages-*.js register one page per menu item. -->
+  <div id="app"></div>
+  <noscript><p style="padding:2rem">The member hub needs JavaScript enabled.</p></noscript>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/app.js"></script>
+  <script src="../js/qr.js"></script>
+  <script src="../js/member/kit.js"></script>
+  <script src="../js/member/shell.js"></script>
+  <script src="../js/member/pages-dashboard.js"></script>
+  <script src="../js/member/pages-network.js"></script>
+  <script src="../js/member/pages-wallet.js"></script>
+  <script src="../js/member/pages-money.js"></script>
+  <script src="../js/member/pages-account.js"></script>
+  <script src="../js/calc.js"></script>
+  <script src="../js/member/pages-tools.js"></script>
+  <!-- the API backend URL can be overridden with window.NET_API = "https://…/api" before data.js -->
+  <script>Store.ready.then(M.mount);</script>
+</body>
+</html>

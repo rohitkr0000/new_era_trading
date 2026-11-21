@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calculator — New Era Trading</title>
+  <meta name="description" content="Simple interest and compounding calculator for New Era Trading: 5% ROI per trading day, 25-day cycle.">
+  <link rel="icon" href="images/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="images/favicon.png">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/site.css">
+  <style>
+    body { background: #061230; color: #e9eefc; min-height: 100vh; }
+    .cpg-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .cpg-head a.brand { display: flex; align-items: center; gap: .6rem; color: inherit; text-decoration: none; font-weight: 800; font-family: 'Exo 2', sans-serif; }
+    .cpg-head img { width: 38px; height: 38px; }
+    .cpg-head nav { display: flex; gap: .6rem; flex-wrap: wrap; }
+    .cpg-main { max-width: 1040px; margin: 0 auto; padding: 1.6rem 1.1rem 3rem; }
+    .cpg-main h1 { font-family: 'Exo 2', sans-serif; font-size: clamp(1.7rem, 4vw, 2.4rem); margin: 0 0 .3rem; }
+    .cpg-main h1 em { color: #e8b923; font-style: normal; }
+    .cpg-main > p.lead { opacity: .8; margin: 0 0 1.4rem; max-width: 62ch; }
+    .calc-f input[readonly] { opacity: .8; }
+  </style>
+</head>
+<body>
+<header class="cpg-head">
+  <a class="brand" href="index.html"><img src="images/logo.png" alt="New Era Trading">New Era Trading</a>
+  <nav>
+    <a class="btn btn-outline btn-sm" href="index.html">← Home</a>
+    <a class="btn btn-outline btn-sm" href="login.html">Login</a>
+    <a class="btn btn-primary btn-sm" href="register.html">Join now</a>
+  </nav>
+</header>
+
+<main class="cpg-main">
+  <h1>Simple interest <em>&amp;</em> compounding calculator</h1>
+  <p class="lead">Enter an amount and see what it earns every trading day — paid out as cash (simple interest) or added to the base (compounding) — for the full 25-day cycle and beyond.</p>
+  <div id="calc"><p>Loading…</p></div>
+</main>
+
+<script src="js/data.js"></script>
+<script src="js/calc.js"></script>
+<script>
+  // plan numbers come from the server (admin settings); the calculator also works with the built-in defaults if the API is unreachable
+  Store.ready.then(function () { Calc.mount(document.getElementById('calc'), { settings: Store.settings() }); });
+</script>
+</body>
+</html>

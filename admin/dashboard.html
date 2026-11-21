@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard — Admin</title>
+  <link rel="icon" href="../images/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="../images/favicon.png">
+  <link rel="stylesheet" href="../css/fonts.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/panel.css">
+</head>
+<body data-role="admin" data-page="dashboard" data-title="Admin Dashboard" data-base="../">
+<main id="page-content" hidden>
+  <section class="grid grid-4" id="stats"></section>
+
+  <section class="grid grid-2 mt">
+    <div class="card"><h3>New sign-ups — last 7 days</h3><div id="chart"></div></div>
+    <div class="card">
+      <div class="card-head"><h3>Pending withdrawals</h3><a href="payouts.html" class="small">Manage</a></div>
+      <div id="pending"></div>
+    </div>
+  </section>
+
+  <div class="card mt">
+    <div class="card-head"><h3>Latest members</h3><a href="members.html" class="small">View all</a></div>
+    <div id="latest"></div>
+  </div>
+</main>
+
+<script src="../js/data.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  Store.ready.then(function () {
+  var me = Layout.mount();
+  if (me) {
+    var db = Store.db, mem = Store.members();
+    var revenue = db.orders.reduce(function (s, o) { return s + o.amount; }, 0);
+    var paid = db.tx.filter(function (t) { return t.amount > 0 && Store.INCOME_TYPES.indexOf(t.type) > -1; })
+      .reduce(function (s, t) { return s + t.amount; }, 0);
+    var pend = db.withdrawals.filter(function (w) { return w.status === 'pending'; });
+
+    var tiles = [
+      ['👥', mem.length, 'Total members'], ['✅', mem.filter(Store.isActive).length, 'Active members'],
+      ['💵', UI.money(revenue), 'Package revenue'], ['🏆', UI.money(paid), 'Commissions paid']
+    ];
+    document.getElementById('stats').innerHTML = tiles.map(function (x) {
+      return '<div class="card stat"><div class="stat-ico">' + x[0] + '</div><div><b>' + x[1] + '</b><span>' + x[2] + '</span></div></div>';
+    }).join('');
+
+    UI.barChart(document.getElementById('chart'), Store.signupsByDay(7));
+
+    document.getElementById('pending').innerHTML = UI.table(['Member', 'Amount', 'Method'],
+      pend.slice(0, 5).map(function (w) { return [UI.esc(Store.byId(w.userId).name), UI.money(w.amount), UI.esc(w.method)]; }),
+      'No pending requests 🎉');
+
+    document.getElementById('latest').innerHTML = UI.table(['Member', 'Sponsor', 'Invested', 'Status', 'Joined'],
+      mem.slice().sort(function (a, b) { return b.joined - a.joined; }).slice(0, 6).map(function (u) {
+        var sp = u.sponsorId ? Store.byId(u.sponsorId) : null;
+        return [UI.esc(u.name) + '<br><small class="muted">' + UI.esc(u.code) + '</small>', sp ? UI.esc(sp.name) : '—', UI.pkgBadge(u), UI.statusBadge(u), UI.date(u.joined)];
+      }));
+  }
+  });
+</script>
+</body>
+</html>

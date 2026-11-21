@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Join — New Era Trading</title>
+  <link rel="icon" href="images/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="images/favicon.png">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<div class="auth-wrap">
+  <aside class="auth-side">
+    <a class="brand" href="index.html"><img class="logo-img" src="images/logo.png" alt="New Era Trading">New Era Trading</a>
+    <h2>Start building your team</h2>
+    <ul>
+      <li>Join under a sponsor</li>
+      <li>Pick your left or right leg</li>
+      <li>Activate a package and start earning</li>
+    </ul>
+  </aside>
+
+  <main class="auth-main">
+    <div class="auth-box">
+      <h1>Create account</h1>
+      <p class="muted">Already a member? <a href="login.html">Sign in</a></p>
+
+      <div class="form-error" id="err" hidden></div>
+
+      <form id="regForm" novalidate>
+        <div class="field">
+          <label for="sponsor">Sponsor code</label>
+          <input id="sponsor" name="sponsorCode" placeholder="e.g. NET1001" required>
+          <div class="hint" id="sponsorHint">Ask the person who invited you for their code.</div>
+        </div>
+
+        <div class="field">
+          <label>Placement leg</label>
+          <div class="seg">
+            <label><input type="radio" name="leg" value="left" checked><span>⬅ Left leg</span></label>
+            <label><input type="radio" name="leg" value="right"><span>Right leg ➡</span></label>
+          </div>
+          <div class="hint" id="slotHint" hidden></div>
+        </div>
+
+        <div class="field"><label for="name">Full name</label><input id="name" name="name" autocomplete="name" required></div>
+        <div class="grid grid-2" style="gap:.8rem">
+          <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" required></div>
+          <div class="field"><label for="phone">Mobile number</label><input id="phone" name="phone" type="tel" autocomplete="tel" required minlength="8" maxlength="20" placeholder="e.g. 9876543210"><div class="hint">One account per mobile number and per email.</div></div>
+        </div>
+        <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" minlength="8" pattern="(?=.*[A-Za-z])(?=.*[0-9]).{8,}" title="At least 8 characters with letters and digits" autocomplete="new-password" required><div class="hint">At least 8 characters, with letters and digits.</div></div>
+        <div class="field" id="amountField"><label for="amount">Joining amount (USD)</label><input id="amount" name="amount" type="number" min="5" step="5" placeholder="$5, $10, $15… (leave empty to activate later)">
+          <div class="hint" id="amountHint">Minimum joining is $5. Payment is simulated in this demo.</div></div>
+
+        <div class="field"><label style="font-weight:400"><input type="checkbox" id="terms" style="width:auto"> I agree to the terms and income disclaimer.</label></div>
+        <button class="btn btn-primary btn-block" type="submit">Create account</button>
+      </form>
+    </div>
+  </main>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script>
+  Store.ready.then(function () {
+    var form = document.getElementById('regForm'), err = document.getElementById('err');
+    var params = new URLSearchParams(location.search);
+    var S = Store.settings();
+    if (Store.error) { err.textContent = Store.error; err.hidden = false; }
+
+    // A joining amount at sign-up is a simulated payment — only available on a demo server.
+    // On a live server you sign up first, then deposit USDT and activate a package from the dashboard.
+    if (!Store.isDemo()) {
+      document.getElementById('amountField').hidden = true; form.amount.disabled = true;
+      var live = document.createElement('p'); live.className = 'muted small';
+      live.textContent = 'After signing up: verify your e-mail, complete KYC, deposit USDT, then activate a package (from $' + (S.minJoin || 5) + ', in multiples of $' + (S.joinMultiple || 5) + ').';
+      document.getElementById('amountField').after(live);
+    }
+    // joining amount (plan: minimum joining $5)
+    S.minJoin = S.minJoin || 5; S.joinMultiple = S.joinMultiple || 5; S.currency = S.currency || '$';
+    form.amount.min = S.minJoin; form.amount.step = S.joinMultiple;
+    form.amount.placeholder = S.currency + S.minJoin + ', ' + S.currency + S.minJoin * 2 + ', ' + S.currency + S.minJoin * 3 + '… (leave empty to activate later)';
+    if (Store.isDemo()) document.getElementById('amountHint').textContent = 'Minimum ' + S.currency + S.minJoin + ', then in multiples of ' + S.currency + S.joinMultiple + ' (5, 10, 15, 20…). Payment is simulated in this demo.';
+
+    // prefill from link (?sponsor=NET1001&leg=right&parent=u_1005)
+    if (params.get('sponsor')) form.sponsorCode.value = params.get('sponsor');
+    if (params.get('leg') === 'right') form.leg.value = 'right';
+    var parentId = params.get('parent');
+    if (parentId) {
+      var par = Store.byId(Number(parentId));
+      var hint = document.getElementById('slotHint');
+      hint.hidden = false;
+      hint.textContent = par ? 'You will be placed directly under ' + par.name + ' (' + par.code + ').' : 'You will be placed in the slot your sponsor selected.';
+    }
+
+    // live sponsor check (asks the API for the sponsor's name)
+    var sh = document.getElementById('sponsorHint'), timer;
+    function checkSponsor() {
+      var code = form.sponsorCode.value.trim();
+      clearTimeout(timer);
+      if (!code) { sh.textContent = 'Ask the person who invited you for their code.'; sh.style.color = ''; return; }
+      timer = setTimeout(function () {
+        Store.lookupSponsor(code).then(function (r) {
+          if (form.sponsorCode.value.trim() !== code) return;
+          if (r.ok) { sh.textContent = '✓ Sponsor: ' + r.name; sh.style.color = '#059669'; }
+          else { sh.textContent = r.status === 0 ? '✗ ' + r.error : '✗ Sponsor code not found'; sh.style.color = '#dc2626'; }
+        });
+      }, 300);
+    }
+    form.sponsorCode.addEventListener('input', checkSponsor);
+    checkSponsor();
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      err.hidden = true;
+      if (!document.getElementById('terms').checked) { err.textContent = 'Please accept the terms to continue.'; err.hidden = false; return; }
+      var amt = Number(form.amount.value);
+      if (!form.amount.disabled && form.amount.value !== '' && (amt < 5 || Math.round(amt * 100) % 500 !== 0)) { err.textContent = 'Joining amount must be at least $5 and a multiple of $5 (5, 10, 15, 20…).'; err.hidden = false; return; }
+      var btn = form.querySelector('button[type=submit]');
+      btn.disabled = true;
+      Store.register({
+        name: form.name.value, email: form.email.value, phone: form.phone.value, password: form.password.value,
+        sponsorCode: form.sponsorCode.value, leg: form.leg.value, amount: form.amount.disabled ? '' : form.amount.value, parentId: parentId
+      }).then(function (r) {
+        btn.disabled = false;
+        if (!r.ok) { err.textContent = r.error; err.hidden = false; window.scrollTo(0, 0); return; }
+        location.href = 'user/dashboard.html';
+      });
+    });
+  });
+</script>
+</body>
+</html>

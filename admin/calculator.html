@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calculator — Admin</title>
+  <link rel="icon" href="../images/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="../images/favicon.png">
+  <link rel="stylesheet" href="../css/fonts.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/panel.css">
+</head>
+<body data-role="admin" data-page="calculator" data-title="Plan Calculator" data-base="../">
+<main id="page-content" hidden>
+  <div class="card">
+    <h3>Company view — simple interest &amp; compounding</h3>
+    <p class="hint">Same maths as the company spreadsheet. All numbers can be changed here to test a plan before saving it in <a href="settings.html">Plan Settings</a>. “System deposit” and “Difference &amp; liability” are shown to the company only.</p>
+    <div id="calc"></div>
+  </div>
+</main>
+
+<script src="../js/data.js"></script>
+<script src="../js/app.js"></script>
+<script src="../js/calc.js"></script>
+<script>
+  Store.ready.then(function () {
+    if (Layout.mount()) Calc.mount(document.getElementById('calc'), { settings: Store.settings(), admin: true });
+  });
+</script>
+</body>
+</html>
