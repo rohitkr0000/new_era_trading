@@ -8,10 +8,14 @@ use App\Services\RiskService;
 use App\Services\Snapshot;
 use App\Support\Audit;
 use App\Support\Money;
+use App\Support\Phone;
+use App\Support\PlanException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 
 /** Admin: one member's full picture (team, income, money, activity) and the suspicious-activity alerts. */
 class RiskController extends Controller
@@ -77,6 +81,63 @@ class RiskController extends Controller
         $u->tokens()->delete();
         Audit::log('member.sessions-revoked', $admin, 'user#' . $u->id, ['code' => $u->code, 'sessions' => $n]);
         return response()->json(['ok' => true, 'revoked' => $n]);
+    }
+
+    /* ------------------------------------------------------------------ admin edits a member's account */
+
+    /** Change a member's e-mail and/or phone. Changing the e-mail makes it unverified again (they must re-verify). */
+    public function updateContact(Request $request, int $id): JsonResponse
+    {
+        $admin = $this->admin($request);
+        $u = User::where('role', 'member')->findOrFail($id);
+        $d = $request->validate(['email' => 'nullable|string|email|max:160', 'phone' => 'nullable|string|max:30']);
+        if (empty($d['email']) && empty($d['phone'])) throw new PlanException('Give a new e-mail or phone number.');
+
+        $changes = [];
+        if (! empty($d['email'])) {
+            $email = strtolower(trim($d['email']));
+            if ($email !== $u->email) {
+                if (User::where('email', $email)->where('id', '!=', $u->id)->exists()) throw new PlanException('This e-mail is already used by another account.');
+                $changes['fromEmail'] = $u->email;
+                $changes['toEmail'] = $email;
+                $u->email = $email;
+                $u->email_verified_at = null;   // an admin-set address is not proven yet — the member must verify it again
+            }
+        }
+        if (! empty($d['phone'])) {
+            $phone = trim($d['phone']);
+            $key = Phone::key($phone);
+            if ($key === null) throw new PlanException('Enter a valid mobile number (8–15 digits).');
+            if ($key !== $u->phone_key) {
+                if (User::where('phone_key', $key)->where('id', '!=', $u->id)->exists()) throw new PlanException('This mobile number is already registered.');
+                $changes['fromPhone'] = $u->phone;
+                $changes['toPhone'] = $phone;
+                $u->phone = $phone;
+                $u->phone_key = $key;
+            }
+        }
+        if ($changes) {
+            $u->save();
+            Snapshot::forget($u->id);
+            Audit::log('admin.member-contact-update', $admin, 'user#' . $u->id, $changes);
+        }
+        return response()->json(['ok' => true, 'emailVerified' => (bool) $u->email_verified_at]);
+    }
+
+    /** Set a member's password directly (support request, lost access …). Leave "password" empty to generate a strong one, shown once. Signs them out everywhere. */
+    public function resetPassword(Request $request, int $id): JsonResponse
+    {
+        $admin = $this->admin($request);
+        $u = User::where('role', 'member')->findOrFail($id);
+        $d = $request->validate(['password' => ['nullable', 'string', 'max:100', Password::min(8)->letters()->numbers()]]);
+        $generated = empty($d['password']);
+        $plain = $generated ? Str::password(14, symbols: false) : $d['password'];
+        $u->password = $plain;   // the User model's 'hashed' cast bcrypts this on save
+        $u->save();
+        $revoked = $u->tokens()->count();
+        $u->tokens()->delete();   // sign out of every device: they must sign in again with the new password
+        Audit::log('admin.member-password-reset', $admin, 'user#' . $u->id, ['generated' => $generated, 'sessionsRevoked' => $revoked]);
+        return response()->json(['ok' => true, 'password' => $generated ? $plain : null, 'sessionsRevoked' => $revoked]);
     }
 
     /* ------------------------------------------------------------------ one member */

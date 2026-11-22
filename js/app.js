@@ -75,7 +75,7 @@
       ['income', '💰', 'Income'], ['wallet', '👛', 'Wallet'], ['packages', '📦', 'Packages'], ['profile', '👤', 'Profile']
     ],
     admin: [
-      ['dashboard', '📊', 'Dashboard'], ['members', '👥', 'Members'], ['deposits', '💳', 'Deposits'], ['payouts', '💸', 'Payouts'], ['kyc', '🪪', 'KYC'], ['tickets', '💬', 'Tickets'], ['alerts', '🚨', 'Alerts'], ['audit', '🧾', 'Audit Log'], ['calculator', '🧮', 'Calculator'], ['settings', '⚙️', 'Plan Settings']
+      ['dashboard', '📊', 'Dashboard'], ['members', '👥', 'Members'], ['deposits', '💳', 'Deposits'], ['payouts', '💸', 'Payouts'], ['wallet', '💰', 'Company Wallet'], ['kyc', '🪪', 'KYC'], ['tickets', '💬', 'Tickets'], ['alerts', '🚨', 'Alerts'], ['audit', '🧾', 'Audit Log'], ['calculator', '🧮', 'Calculator'], ['settings', '⚙️', 'Plan Settings']
     ]
   };
 

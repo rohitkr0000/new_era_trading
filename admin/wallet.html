@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Company Wallet — Admin</title>
+  <link rel="icon" href="../images/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="../images/favicon.png">
+  <link rel="stylesheet" href="../css/fonts.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/panel.css">
+</head>
+<body data-role="admin" data-page="wallet" data-title="Company Wallet" data-base="../">
+<main id="page-content" hidden>
+  <section class="grid grid-4" id="stats"></section>
+
+  <div class="card mt">
+    <div class="card-head">
+      <h3>Charges collected</h3>
+      <div class="row" style="gap:.5rem">
+        <select id="type" style="max-width:170px"><option value="">All types</option><option value="w">Withdrawal fee</option><option value="p">P2P fee</option></select>
+        <select id="st" style="max-width:140px"><option value="">All</option><option value="Deducted">Kept</option><option value="Reversed">Reversed</option></select>
+        <input id="q" placeholder="Member name or code…" style="max-width:220px">
+      </div>
+    </div>
+    <p class="hint">Every withdrawal's service charge and every P2P transfer's company charge is logged here — this is the company's own earnings from fees, separate from package revenue. "Reversed" means an admin later rejected that withdrawal, so the charge was never actually kept.</p>
+    <div class="muted small" id="count"></div>
+    <div id="list"></div>
+  </div>
+</main>
+
+<script src="../js/data.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  Store.ready.then(function () {
+  var me = Layout.mount();
+  if (me) {
+    var $ = function (id) { return document.getElementById(id); };
+    var all = Store.db.deductions || [];
+
+    function draw() {
+      var type = $('type').value, st = $('st').value, q = $('q').value.trim().toLowerCase();
+      var rows = all.filter(function (d) {
+        if (type === 'w' && !d.wid) return false;
+        if (type === 'p' && d.wid) return false;
+        if (st && d.status !== st) return false;
+        if (q) {
+          var u = Store.byId(d.userId);
+          var hay = ((u ? u.name : '') + ' ' + (u ? u.code : '')).toLowerCase();
+          if (hay.indexOf(q) < 0) return false;
+        }
+        return true;
+      }).sort(function (a, b) { return b.date - a.date; });
+
+      var kept = all.filter(function (d) { return d.status === 'Deducted'; });
+      var wFees = kept.filter(function (d) { return d.wid; }).reduce(function (s, d) { return s + d.amount; }, 0);
+      var pFees = kept.filter(function (d) { return !d.wid; }).reduce(function (s, d) { return s + d.amount; }, 0);
+      var todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+      var todayTotal = kept.filter(function (d) { return d.date >= todayStart.getTime(); }).reduce(function (s, d) { return s + d.amount; }, 0);
+
+      var tiles = [
+        ['💰', UI.money(wFees + pFees), 'Company wallet (kept, all time)'],
+        ['🏦', UI.money(wFees), 'Withdrawal fees kept'],
+        ['🔁', UI.money(pFees), 'P2P fees kept'],
+        ['📅', UI.money(todayTotal), 'Kept today']
+      ];
+      $('stats').innerHTML = tiles.map(function (x) {
+        return '<div class="card stat"><div class="stat-ico">' + x[0] + '</div><div><b>' + x[1] + '</b><span>' + x[2] + '</span></div></div>';
+      }).join('');
+
+      $('count').textContent = rows.length + ' entr' + (rows.length === 1 ? 'y' : 'ies');
+      $('list').innerHTML = UI.table(['Date', 'Member', 'Type', 'Amount', 'Status', 'Note'], rows.map(function (d) {
+        var u = Store.byId(d.userId);
+        return [
+          UI.date(d.date),
+          u ? (UI.esc(u.name) + '<br><small class="muted">' + UI.esc(u.code) + '</small>') : '—',
+          d.wid ? UI.badge('Withdrawal fee', 'blue') : UI.badge('P2P fee', 'purple'),
+          UI.money(d.amount),
+          d.status === 'Reversed' ? UI.badge('Reversed', 'red') : UI.badge('Kept', 'green'),
+          '<small class="muted">' + UI.esc(d.note) + '</small>'
+        ];
+      }), 'No charges match your filters.');
+    }
+    ['type', 'st', 'q'].forEach(function (id) { $(id).addEventListener('input', draw); });
+    draw();
+  }
+  });
+</script>
+</body>
+</html>

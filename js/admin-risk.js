@@ -124,7 +124,8 @@
         ['KYC', UI.badge(u.kyc, u.kyc === 'approved' ? 'green' : u.kyc === 'rejected' ? 'red' : 'amber')], ['Transaction PIN', yn(u.hasPin, 'set', 'not set')], ['Payout wallet', esc(u.usdtAddress || '—')],
         ['Sponsor', u.sponsor ? '<a href="#" data-member="' + u.sponsor.id + '">' + esc(u.sponsor.name) + ' · ' + esc(u.sponsor.code) + '</a>' : '—'],
         ['Joined', dt(u.joined)], ['Last sign-in', dt(u.lastLogin)], ['Last sign-in IP', esc(u.lastLoginIp || '—')], ['Compounding', esc(u.compoundMode || '—')], ['Active sessions', u.sessions]]) +
-      '<div class="subhead">Earning cap</div>' + capBlock(c, d.income.total);
+      '<div class="subhead">Earning cap</div>' + capBlock(c, d.income.total) +
+      '<div class="subhead">Admin: account &amp; security</div>' + credBlock(u);
 
     pages.team =
       tiles([['Direct referrals', t.directs], ['Active directs', t.activeDirects], ['Whole team (all levels)', t.total], ['Active in team', t.active], ['Team business', money(t.business)], ['Level-1 business', money(c.directBusiness)]]) +
@@ -185,6 +186,7 @@
     function wire(root) {
       wireCards(root, reload);
       root.querySelectorAll('[data-member]').forEach(function (b) { b.onclick = function (e) { e.preventDefault(); m.close(); openMember(Number(b.dataset.member)); }; });
+      wireCredBlock(root, u, reload);
     }
     m.box.querySelectorAll('.tab').forEach(function (b) { b.onclick = function () { show(b.dataset.tab); }; });
     wire(m.box.querySelector('#mPage'));
@@ -197,6 +199,66 @@
     m.box.querySelector('#mRevoke').onclick = function () {
       if (!window.confirm('Sign ' + u.name + ' out of every device? They can log in again with their password.')) return;
       Store.revokeSessions(u.id).then(function (r) { UI.toast(r.ok ? 'Signed out of ' + r.revoked + ' session(s)' : r.error, r.ok ? 'ok' : 'err'); if (r.ok) reload(); });
+    };
+  }
+
+  /* ---------- Summary tab: admin can change a member's e-mail, phone and password ---------- */
+  function credBlock(u) {
+    return '<div class="alert-card" style="border-left-color:var(--primary)">' +
+      '<form id="acctForm" class="row" style="gap:.6rem;flex-wrap:wrap;align-items:end">' +
+        '<div><label class="small muted">E-mail</label><br><input id="acctEmail" type="email" value="' + esc(u.email) + '" style="width:260px"></div>' +
+        '<div><label class="small muted">Phone</label><br><input id="acctPhone" type="text" value="' + esc(u.phone || '') + '" style="width:160px"></div>' +
+        '<button class="btn btn-sm btn-primary" type="submit">Update contact</button>' +
+      '</form>' +
+      '<p class="hint">Changing the e-mail marks it unverified again — the member must verify it before withdrawing.</p>' +
+      '<hr style="border:none;border-top:1px dashed var(--line);margin:.7rem 0">' +
+      '<form id="pwForm" class="row" style="gap:.6rem;flex-wrap:wrap;align-items:end">' +
+        '<div><label class="small muted">New password (leave blank to auto-generate)</label><br><input id="pwNew" type="text" placeholder="8+ chars, letters + numbers" style="min-width:240px" autocomplete="off"></div>' +
+        '<button class="btn btn-sm btn-danger" type="submit">Reset password</button>' +
+      '</form>' +
+      '<p class="hint">Resetting signs the member out of every device; they sign in again with the new password.</p>' +
+    '</div>';
+  }
+
+  function showGeneratedPassword(name, pw) {
+    var m = modal('<div class="modal-head"><h2>New password for ' + esc(name) + '</h2><div class="grow"><button class="btn btn-sm btn-ghost" data-close>Close</button></div></div>' +
+      '<div class="modal-body"><p class="hint">Shown once — copy it now and share it with the member yourself. It will not be shown again.</p>' +
+      '<div class="row" style="gap:.5rem"><input readonly value="' + esc(pw) + '" id="genPwBox" style="font-family:monospace;min-width:220px;flex:1">' +
+      '<button class="btn btn-sm btn-outline" id="genPwCopy">Copy</button></div></div>', 'sm');
+    m.box.querySelector('#genPwCopy').onclick = function () { UI.copy(pw); };
+  }
+
+  function wireCredBlock(root, u, reload) {
+    if (!root) return;
+    var acctForm = root.querySelector('#acctForm');
+    if (acctForm) acctForm.onsubmit = function (e) {
+      e.preventDefault();
+      var email = root.querySelector('#acctEmail').value.trim();
+      var phone = root.querySelector('#acctPhone').value.trim();
+      var patch = {};
+      if (email && email.toLowerCase() !== (u.email || '').toLowerCase()) patch.email = email;
+      if (phone && phone !== (u.phone || '')) patch.phone = phone;
+      if (!patch.email && !patch.phone) return UI.toast('Change the e-mail or phone first', 'err');
+      var btn = acctForm.querySelector('button'); btn.disabled = true;
+      Store.updateMemberContact(u.id, patch).then(function (r) {
+        btn.disabled = false;
+        if (!r.ok) return UI.toast(r.error, 'err');
+        UI.toast('Contact details updated'); reload();
+      });
+    };
+    var pwForm = root.querySelector('#pwForm');
+    if (pwForm) pwForm.onsubmit = function (e) {
+      e.preventDefault();
+      var pw = root.querySelector('#pwNew').value;
+      if (!window.confirm('Reset ' + u.name + '’s password? They will be signed out of every device.')) return;
+      var btn = pwForm.querySelector('button'); btn.disabled = true;
+      Store.resetMemberPassword(u.id, pw || null).then(function (r) {
+        btn.disabled = false;
+        if (!r.ok) return UI.toast(r.error, 'err');
+        root.querySelector('#pwNew').value = '';
+        if (r.password) showGeneratedPassword(u.name, r.password);
+        else UI.toast('Password updated. Signed out of ' + r.sessionsRevoked + ' session(s).');
+      });
     };
   }
 

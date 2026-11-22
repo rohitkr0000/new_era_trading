@@ -347,6 +347,8 @@
     riskUpdate: function (id, status, note) { return req('POST', '/admin/alerts/' + id, { status: status, note: note || null }); },
     riskScan: function () { return req('POST', '/admin/alerts/scan'); },
     revokeSessions: function (id) { return req('POST', '/admin/members/' + id + '/revoke'); },
+    updateMemberContact: function (id, patch) { return write('PUT', '/admin/members/' + id + '/contact', patch); },
+    resetMemberPassword: function (id, password) { return req('POST', '/admin/members/' + id + '/password', { password: password || null }); },
     reset: function () { return req('POST', '/admin/reset').then(function (r) { if (r.ok) logout(); return r; }); }
   };
 })(window);

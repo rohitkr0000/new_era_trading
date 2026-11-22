@@ -52,6 +52,8 @@ Route::middleware(['auth:sanctum', 'throttle:user', 'forget.snapshot'])->group(f
         Route::post('/members/{id}/block', [AdminController::class, 'block']);
         Route::get('/members/{id}', [RiskController::class, 'member'])->whereNumber('id');
         Route::post('/members/{id}/revoke', [RiskController::class, 'revoke'])->whereNumber('id')->middleware('throttle:admin-action');
+        Route::put('/members/{id}/contact', [RiskController::class, 'updateContact'])->whereNumber('id')->middleware('throttle:admin-action');
+        Route::post('/members/{id}/password', [RiskController::class, 'resetPassword'])->whereNumber('id')->middleware('throttle:admin-action');
         Route::get('/alerts', [RiskController::class, 'alerts']);
         Route::post('/alerts/scan', [RiskController::class, 'scan'])->middleware('throttle:admin-action');
         Route::post('/alerts/{id}', [RiskController::class, 'alertUpdate'])->whereNumber('id');

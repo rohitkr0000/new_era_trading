@@ -17,7 +17,7 @@
     <h2>Start building your team</h2>
     <ul>
       <li>Join under a sponsor</li>
-      <li>Pick your left or right leg</li>
+      <li>Earn 5% ROI every trading day</li>
       <li>Activate a package and start earning</li>
     </ul>
   </aside>
@@ -34,14 +34,6 @@
           <label for="sponsor">Sponsor code</label>
           <input id="sponsor" name="sponsorCode" placeholder="e.g. NET1001" required>
           <div class="hint" id="sponsorHint">Ask the person who invited you for their code.</div>
-        </div>
-
-        <div class="field">
-          <label>Placement leg</label>
-          <div class="seg">
-            <label><input type="radio" name="leg" value="left" checked><span>⬅ Left leg</span></label>
-            <label><input type="radio" name="leg" value="right"><span>Right leg ➡</span></label>
-          </div>
           <div class="hint" id="slotHint" hidden></div>
         </div>
 
@@ -84,9 +76,8 @@
     form.amount.placeholder = S.currency + S.minJoin + ', ' + S.currency + S.minJoin * 2 + ', ' + S.currency + S.minJoin * 3 + '… (leave empty to activate later)';
     if (Store.isDemo()) document.getElementById('amountHint').textContent = 'Minimum ' + S.currency + S.minJoin + ', then in multiples of ' + S.currency + S.joinMultiple + ' (5, 10, 15, 20…). Payment is simulated in this demo.';
 
-    // prefill from link (?sponsor=NET1001&leg=right&parent=u_1005)
+    // prefill from link (?sponsor=NET1001&parent=u_1005)
     if (params.get('sponsor')) form.sponsorCode.value = params.get('sponsor');
-    if (params.get('leg') === 'right') form.leg.value = 'right';
     var parentId = params.get('parent');
     if (parentId) {
       var par = Store.byId(Number(parentId));
@@ -122,7 +113,7 @@
       btn.disabled = true;
       Store.register({
         name: form.name.value, email: form.email.value, phone: form.phone.value, password: form.password.value,
-        sponsorCode: form.sponsorCode.value, leg: form.leg.value, amount: form.amount.disabled ? '' : form.amount.value, parentId: parentId
+        sponsorCode: form.sponsorCode.value, amount: form.amount.disabled ? '' : form.amount.value, parentId: parentId
       }).then(function (r) {
         btn.disabled = false;
         if (!r.ok) { err.textContent = r.error; err.hidden = false; window.scrollTo(0, 0); return; }
