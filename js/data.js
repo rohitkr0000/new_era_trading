@@ -349,6 +349,8 @@
     revokeSessions: function (id) { return req('POST', '/admin/members/' + id + '/revoke'); },
     updateMemberContact: function (id, patch) { return write('PUT', '/admin/members/' + id + '/contact', patch); },
     resetMemberPassword: function (id, password) { return req('POST', '/admin/members/' + id + '/password', { password: password || null }); },
+    resetMemberPin: function (id, pin) { return req('POST', '/admin/members/' + id + '/pin', { pin: pin || null }); },
+    updateMemberSponsor: function (id, sponsorCode) { return write('PUT', '/admin/members/' + id + '/sponsor', { sponsorCode: sponsorCode }); },
     reset: function () { return req('POST', '/admin/reset').then(function (r) { if (r.ok) logout(); return r; }); }
   };
 })(window);

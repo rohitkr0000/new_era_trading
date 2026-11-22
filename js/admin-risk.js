@@ -121,7 +121,7 @@
         ['Team members', t.total], ['Direct referrals', t.directs]]) +
       '<div class="subhead">Profile</div>' +
       kv([['E-mail', esc(u.email) + ' ' + yn(u.emailVerified, 'verified', 'not verified')], ['Phone', esc(u.phone || '—')], ['Country / city', esc([u.country, u.city].filter(Boolean).join(' / ') || '—')],
-        ['KYC', UI.badge(u.kyc, u.kyc === 'approved' ? 'green' : u.kyc === 'rejected' ? 'red' : 'amber')], ['Transaction PIN', yn(u.hasPin, 'set', 'not set')], ['Payout wallet', esc(u.usdtAddress || '—')],
+        ['KYC', UI.badge(u.kyc, u.kyc === 'approved' ? 'green' : u.kyc === 'rejected' ? 'red' : 'amber') + ' <a href="kyc.html" class="small">Review documents →</a>'], ['Transaction PIN', yn(u.hasPin, 'set', 'not set')], ['Payout wallet', esc(u.usdtAddress || '—')],
         ['Sponsor', u.sponsor ? '<a href="#" data-member="' + u.sponsor.id + '">' + esc(u.sponsor.name) + ' · ' + esc(u.sponsor.code) + '</a>' : '—'],
         ['Joined', dt(u.joined)], ['Last sign-in', dt(u.lastLogin)], ['Last sign-in IP', esc(u.lastLoginIp || '—')], ['Compounding', esc(u.compoundMode || '—')], ['Active sessions', u.sessions]]) +
       '<div class="subhead">Earning cap</div>' + capBlock(c, d.income.total) +
@@ -202,13 +202,16 @@
     };
   }
 
-  /* ---------- Summary tab: admin can change a member's e-mail, phone and password ---------- */
+  /* ---------- Summary tab: admin can change a member's profile, password, PIN and sponsor ---------- */
   function credBlock(u) {
     return '<div class="alert-card" style="border-left-color:var(--primary)">' +
       '<form id="acctForm" class="row" style="gap:.6rem;flex-wrap:wrap;align-items:end">' +
-        '<div><label class="small muted">E-mail</label><br><input id="acctEmail" type="email" value="' + esc(u.email) + '" style="width:260px"></div>' +
-        '<div><label class="small muted">Phone</label><br><input id="acctPhone" type="text" value="' + esc(u.phone || '') + '" style="width:160px"></div>' +
-        '<button class="btn btn-sm btn-primary" type="submit">Update contact</button>' +
+        '<div><label class="small muted">E-mail</label><br><input id="acctEmail" type="email" value="' + esc(u.email) + '" style="width:220px"></div>' +
+        '<div><label class="small muted">Phone</label><br><input id="acctPhone" type="text" value="' + esc(u.phone || '') + '" style="width:140px"></div>' +
+        '<div><label class="small muted">Country</label><br><input id="acctCountry" type="text" value="' + esc(u.country || '') + '" style="width:110px"></div>' +
+        '<div><label class="small muted">City</label><br><input id="acctCity" type="text" value="' + esc(u.city || '') + '" style="width:110px"></div>' +
+        '<div><label class="small muted">Payout wallet (USDT)</label><br><input id="acctWallet" type="text" value="' + esc(u.usdtAddress || '') + '" style="width:220px;font-family:monospace"></div>' +
+        '<button class="btn btn-sm btn-primary" type="submit">Update profile</button>' +
       '</form>' +
       '<p class="hint">Changing the e-mail marks it unverified again — the member must verify it before withdrawing.</p>' +
       '<hr style="border:none;border-top:1px dashed var(--line);margin:.7rem 0">' +
@@ -217,15 +220,27 @@
         '<button class="btn btn-sm btn-danger" type="submit">Reset password</button>' +
       '</form>' +
       '<p class="hint">Resetting signs the member out of every device; they sign in again with the new password.</p>' +
+      '<hr style="border:none;border-top:1px dashed var(--line);margin:.7rem 0">' +
+      '<form id="pinForm" class="row" style="gap:.6rem;flex-wrap:wrap;align-items:end">' +
+        '<div><label class="small muted">New transaction PIN (leave blank to auto-generate)</label><br><input id="pinNew" type="text" placeholder="4–6 digits" style="width:160px" autocomplete="off"></div>' +
+        '<button class="btn btn-sm btn-danger" type="submit">Reset PIN</button>' +
+      '</form>' +
+      '<p class="hint">The PIN guards withdrawals and transfers. Resetting it also clears any wrong-PIN lockout.</p>' +
+      '<hr style="border:none;border-top:1px dashed var(--line);margin:.7rem 0">' +
+      '<form id="sponsorForm" class="row" style="gap:.6rem;flex-wrap:wrap;align-items:end">' +
+        '<div><label class="small muted">Change sponsor (current: ' + (u.sponsor ? esc(u.sponsor.code) : 'none') + ')</label><br><input id="sponsorCode" type="text" placeholder="e.g. NET1001" style="width:160px;text-transform:uppercase"></div>' +
+        '<button class="btn btn-sm btn-outline" type="submit">Change sponsor</button>' +
+      '</form>' +
+      '<p class="hint">Only future investments follow the new sponsor — commissions already paid under the old one are not rewritten, and this does not move the member in the Binary Tree.</p>' +
     '</div>';
   }
 
-  function showGeneratedPassword(name, pw) {
-    var m = modal('<div class="modal-head"><h2>New password for ' + esc(name) + '</h2><div class="grow"><button class="btn btn-sm btn-ghost" data-close>Close</button></div></div>' +
-      '<div class="modal-body"><p class="hint">Shown once — copy it now and share it with the member yourself. It will not be shown again.</p>' +
-      '<div class="row" style="gap:.5rem"><input readonly value="' + esc(pw) + '" id="genPwBox" style="font-family:monospace;min-width:220px;flex:1">' +
-      '<button class="btn btn-sm btn-outline" id="genPwCopy">Copy</button></div></div>', 'sm');
-    m.box.querySelector('#genPwCopy').onclick = function () { UI.copy(pw); };
+  function showGeneratedSecret(title, label, value) {
+    var m = modal('<div class="modal-head"><h2>' + esc(title) + '</h2><div class="grow"><button class="btn btn-sm btn-ghost" data-close>Close</button></div></div>' +
+      '<div class="modal-body"><p class="hint">Shown once — copy ' + esc(label) + ' now and share it with the member yourself. It will not be shown again.</p>' +
+      '<div class="row" style="gap:.5rem"><input readonly value="' + esc(value) + '" id="genSecretBox" style="font-family:monospace;min-width:220px;flex:1">' +
+      '<button class="btn btn-sm btn-outline" id="genSecretCopy">Copy</button></div></div>', 'sm');
+    m.box.querySelector('#genSecretCopy').onclick = function () { UI.copy(value); };
   }
 
   function wireCredBlock(root, u, reload) {
@@ -235,15 +250,21 @@
       e.preventDefault();
       var email = root.querySelector('#acctEmail').value.trim();
       var phone = root.querySelector('#acctPhone').value.trim();
+      var country = root.querySelector('#acctCountry').value.trim();
+      var city = root.querySelector('#acctCity').value.trim();
+      var wallet = root.querySelector('#acctWallet').value.trim();
       var patch = {};
       if (email && email.toLowerCase() !== (u.email || '').toLowerCase()) patch.email = email;
       if (phone && phone !== (u.phone || '')) patch.phone = phone;
-      if (!patch.email && !patch.phone) return UI.toast('Change the e-mail or phone first', 'err');
+      if (country !== (u.country || '')) patch.country = country;
+      if (city !== (u.city || '')) patch.city = city;
+      if (wallet !== (u.usdtAddress || '')) patch.usdtAddress = wallet;
+      if (! Object.keys(patch).length) return UI.toast('Change something first', 'err');
       var btn = acctForm.querySelector('button'); btn.disabled = true;
       Store.updateMemberContact(u.id, patch).then(function (r) {
         btn.disabled = false;
         if (!r.ok) return UI.toast(r.error, 'err');
-        UI.toast('Contact details updated'); reload();
+        UI.toast('Profile updated'); reload();
       });
     };
     var pwForm = root.querySelector('#pwForm');
@@ -256,8 +277,40 @@
         btn.disabled = false;
         if (!r.ok) return UI.toast(r.error, 'err');
         root.querySelector('#pwNew').value = '';
-        if (r.password) showGeneratedPassword(u.name, r.password);
+        if (r.password) showGeneratedSecret('New password for ' + u.name, 'it', r.password);
         else UI.toast('Password updated. Signed out of ' + r.sessionsRevoked + ' session(s).');
+        reload();
+      });
+    };
+    var pinForm = root.querySelector('#pinForm');
+    if (pinForm) pinForm.onsubmit = function (e) {
+      e.preventDefault();
+      var pin = root.querySelector('#pinNew').value.trim();
+      if (pin && !/^\d{4,6}$/.test(pin)) return UI.toast('PIN must be 4 to 6 digits', 'err');
+      if (!window.confirm('Reset ' + u.name + '’s transaction PIN?')) return;
+      var btn = pinForm.querySelector('button'); btn.disabled = true;
+      Store.resetMemberPin(u.id, pin || null).then(function (r) {
+        btn.disabled = false;
+        if (!r.ok) return UI.toast(r.error, 'err');
+        root.querySelector('#pinNew').value = '';
+        if (r.pin) showGeneratedSecret('New PIN for ' + u.name, 'it', r.pin);
+        else UI.toast('PIN updated.');
+        reload();
+      });
+    };
+    var sponsorForm = root.querySelector('#sponsorForm');
+    if (sponsorForm) sponsorForm.onsubmit = function (e) {
+      e.preventDefault();
+      var code = root.querySelector('#sponsorCode').value.trim();
+      if (!code) return UI.toast('Enter the new sponsor’s code', 'err');
+      if (!window.confirm('Change ' + u.name + '’s sponsor to ' + code.toUpperCase() + '? Only future investments will follow the new sponsor — past commissions are not rewritten.')) return;
+      var btn = sponsorForm.querySelector('button'); btn.disabled = true;
+      Store.updateMemberSponsor(u.id, code).then(function (r) {
+        btn.disabled = false;
+        if (!r.ok) return UI.toast(r.error, 'err');
+        root.querySelector('#sponsorCode').value = '';
+        UI.toast('Sponsor changed to ' + r.sponsor.code);
+        reload();
       });
     };
   }

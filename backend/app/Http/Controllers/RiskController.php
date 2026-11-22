@@ -14,6 +14,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
@@ -90,8 +92,11 @@ class RiskController extends Controller
     {
         $admin = $this->admin($request);
         $u = User::where('role', 'member')->findOrFail($id);
-        $d = $request->validate(['email' => 'nullable|string|email|max:160', 'phone' => 'nullable|string|max:30']);
-        if (empty($d['email']) && empty($d['phone'])) throw new PlanException('Give a new e-mail or phone number.');
+        $d = $request->validate([
+            'email' => 'nullable|string|email|max:160', 'phone' => 'nullable|string|max:30',
+            'country' => 'nullable|string|max:60', 'city' => 'nullable|string|max:80', 'usdtAddress' => 'nullable|string|max:120',
+        ]);
+        if (! array_filter($d, fn ($v) => $v !== null && $v !== '')) throw new PlanException('Change at least one field first.');
 
         $changes = [];
         if (! empty($d['email'])) {
@@ -116,6 +121,12 @@ class RiskController extends Controller
                 $u->phone_key = $key;
             }
         }
+        foreach (['country' => 'country', 'city' => 'city', 'usdtAddress' => 'usdt_address'] as $in => $col) {
+            if (array_key_exists($in, $d) && $d[$in] !== null && trim((string) $d[$in]) !== (string) $u->$col) {
+                $changes[$col . 'Changed'] = true;
+                $u->$col = trim($d[$in]) ?: null;
+            }
+        }
         if ($changes) {
             $u->save();
             Snapshot::forget($u->id);
@@ -138,6 +149,47 @@ class RiskController extends Controller
         $u->tokens()->delete();   // sign out of every device: they must sign in again with the new password
         Audit::log('admin.member-password-reset', $admin, 'user#' . $u->id, ['generated' => $generated, 'sessionsRevoked' => $revoked]);
         return response()->json(['ok' => true, 'password' => $generated ? $plain : null, 'sessionsRevoked' => $revoked]);
+    }
+
+    /** Set/replace a member's transaction PIN (lost PIN, support request). Leave "pin" empty to generate one, shown once. Also clears a wrong-PIN lockout. */
+    public function resetPin(Request $request, int $id): JsonResponse
+    {
+        $admin = $this->admin($request);
+        $u = User::where('role', 'member')->findOrFail($id);
+        $d = $request->validate(['pin' => ['nullable', 'regex:/^\d{4,6}$/']], ['pin.regex' => 'PIN must be 4 to 6 digits.']);
+        $generated = empty($d['pin']);
+        $plain = $generated ? (string) random_int(100000, 999999) : $d['pin'];
+        $u->txn_pin = Hash::make($plain);
+        $u->save();
+        RateLimiter::clear('pin:' . $u->id);   // a fresh PIN should not inherit an old wrong-PIN lockout
+        Audit::log('admin.member-pin-reset', $admin, 'user#' . $u->id, ['generated' => $generated]);
+        return response()->json(['ok' => true, 'pin' => $generated ? $plain : null]);
+    }
+
+    /**
+     * Change who a member's future direct/retopup/level income flows up to. Commissions already paid under the old
+     * sponsor are NOT rewritten (only new investments follow the new line), and this does not move the member in the
+     * (cosmetic, income-free) Binary Tree — only sponsor_id changes. Refuses a cycle (the new sponsor must not already
+     * be in this member's own downline).
+     */
+    public function updateSponsor(Request $request, int $id): JsonResponse
+    {
+        $admin = $this->admin($request);
+        $u = User::where('role', 'member')->findOrFail($id);
+        $d = $request->validate(['sponsorCode' => 'required|string|max:20']);
+        $code = strtoupper(trim($d['sponsorCode']));
+        $sponsor = User::where('code', $code)->where('role', 'member')->first();
+        if (! $sponsor) throw new PlanException('Sponsor code not found.');
+        if ($sponsor->id === $u->id) throw new PlanException('A member cannot sponsor themself.');
+        if ($sponsor->id === $u->sponsor_id) throw new PlanException('That is already their sponsor.');
+        $down = DB::select('WITH RECURSIVE sp(id) AS (SELECT id FROM users WHERE sponsor_id = ? UNION SELECT u.id FROM users u JOIN sp ON u.sponsor_id = sp.id) SELECT id FROM sp', [$u->id]);
+        if (in_array((int) $sponsor->id, array_map(fn ($r) => (int) $r->id, $down), true)) throw new PlanException('That member is already inside this member’s own downline — choose someone outside it.');
+        $old = $u->sponsor_id ? User::find($u->sponsor_id) : null;
+        $u->sponsor_id = $sponsor->id;
+        $u->save();
+        Snapshot::forget($u->id);
+        Audit::log('admin.member-sponsor-change', $admin, 'user#' . $u->id, ['fromSponsor' => $old?->code, 'toSponsor' => $sponsor->code]);
+        return response()->json(['ok' => true, 'sponsor' => ['id' => $sponsor->id, 'name' => $sponsor->name, 'code' => $sponsor->code]]);
     }
 
     /* ------------------------------------------------------------------ one member */
