@@ -161,18 +161,46 @@
     render: function (el, ctx) {
       var has = Store.hasPin(ctx.me.id);
       el.innerHTML = '<div class="m-narrow">' + M.card(has ? 'Enter transaction PIN' : 'Create transaction PIN', '<div class="m-alert" hidden id="pnErr"></div><form id="pnForm" class="m-form">' +
-        (has ? M.field('Current PIN', '<input name="old" class="m-pin sm" type="password" inputmode="numeric" maxlength="6" required>') : '<p class="m-note">' + M.icon('shield') + 'You have not set a PIN yet. Choose 4–6 digits you will remember.</p>') +
+        (has ? M.field('Current PIN', '<input name="old" class="m-pin sm" type="password" inputmode="numeric" maxlength="6" required>', '<a href="#" id="pnForgot">Forgot PIN?</a>') : '<p class="m-note">' + M.icon('shield') + 'You have not set a PIN yet. Choose 4–6 digits you will remember.</p>') +
         M.field('New PIN', '<input name="pin" class="m-pin sm" type="password" inputmode="numeric" maxlength="6" required>') +
         M.field('Confirm new PIN', '<input name="pin2" class="m-pin sm" type="password" inputmode="numeric" maxlength="6" required>') +
         '<button class="mbtn gold block" type="submit">' + M.icon('shield') + (has ? 'Change PIN' : 'Create PIN') + '</button></form>' +
         ((Store.demoLogins() && Store.demoLogins().member && ctx.me.email === Store.demoLogins().member.email && Store.demoLogins().member.pin) ? '<p class="m-note">Demo account PIN: <b>' + M.esc(Store.demoLogins().member.pin) + '</b></p>' : ''), { icon: 'shield' }) + '</div>';
-      document.getElementById('pnForm').onsubmit = function (e) {
+      var form = document.getElementById('pnForm'), al = document.getElementById('pnErr');
+      function newPinOk() {
+        if (!/^\d{4,6}$/.test(form.pin.value)) { M.alert(al, 'New PIN must be 4 to 6 digits.'); return false; }
+        if (form.pin.value !== form.pin2.value) { M.alert(al, 'New PINs do not match.'); return false; }
+        return true;
+      }
+      form.onsubmit = function (e) {
         e.preventDefault();
-        var al = document.getElementById('pnErr');
-        if (this.pin.value !== this.pin2.value) return M.alert(al, 'New PINs do not match.');
-        Store.setPin(ctx.me.id, this.pin.value, this.old ? this.old.value : '').then(function (r) {
+        M.alert(al, '');
+        if (!newPinOk()) return;
+        Store.setPin(ctx.me.id, form.pin.value, form.old ? form.old.value : '').then(function (r) {
           if (!r.ok) return M.alert(al, r.error);
           M.toast(has ? 'PIN changed' : 'PIN created'); ctx.refresh();
+        });
+      };
+      // forgot PIN: set the new PIN above, then prove it is you with an e-mailed code instead of the old PIN
+      var forgot = document.getElementById('pnForgot');
+      if (forgot) forgot.onclick = function (e) {
+        e.preventDefault();
+        M.alert(al, '');
+        if (!newPinOk()) return;
+        var newPin = form.pin.value;
+        Store.requestPinForgotOtp().then(function (r) {
+          if (!r.ok) return M.alert(al, r.error);
+          M.askOtp({
+            sentTo: r.sentTo,
+            summary: 'We will set your transaction PIN to the new one you entered, using the code e-mailed to you instead of the old PIN.',
+            resend: function () { return Store.requestPinForgotOtp(); }
+          }).then(function (code) {
+            if (!code) return;
+            Store.resetPinWithOtp(newPin, code).then(function (r2) {
+              if (!r2.ok) return M.alert(al, r2.error);
+              M.toast('PIN reset'); ctx.refresh();
+            });
+          });
         });
       };
     }

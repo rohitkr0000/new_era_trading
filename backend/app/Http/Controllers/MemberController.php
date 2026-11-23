@@ -225,6 +225,27 @@ class MemberController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    /** "Forgot PIN": e-mails a code so the PIN can be reset without knowing the old one. */
+    public function pinForgotOtp(Request $request, OtpService $otp): JsonResponse
+    {
+        $u = $this->member($request);
+        $otp->send($u, 'pin', 'transaction PIN reset');
+        return response()->json(['ok' => true, 'sentTo' => preg_replace('/(?<=.).(?=[^@]*@)/', '*', $u->email)]);
+    }
+
+    /** Sets a new PIN using only the e-mailed code (no old PIN needed) — the other half of "Forgot PIN". */
+    public function pinReset(Request $request, OtpService $otp): JsonResponse
+    {
+        $u = $this->member($request);
+        $d = $request->validate(['pin' => ['required', 'regex:/^\d{4,6}$/'], 'otp' => 'required|string'], ['pin.regex' => 'PIN must be 4 to 6 digits.']);
+        $otp->verify($u, 'pin', trim($d['otp']));
+        $u->txn_pin = Hash::make($d['pin']);
+        $u->save();
+        RateLimiter::clear('pin:' . $u->id);   // a fresh PIN should not inherit an old wrong-PIN lockout
+        Audit::log('auth.pin-changed', $u, null, ['via' => 'forgot-pin e-mail code']);
+        return response()->json(['ok' => true]);
+    }
+
     /* ---------------- e-mail verification ---------------- */
 
     public function emailOtp(Request $request, OtpService $otp): JsonResponse

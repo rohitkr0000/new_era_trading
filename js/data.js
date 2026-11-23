@@ -313,6 +313,9 @@
     requestPasswordOtp: function () { return req('POST', '/account/password/otp'); },
     changePassword: function (id, oldPw, newPw, otp) { return write('PUT', '/account/password', { old: oldPw, new: newPw, otp: otp }); },
     setPin: function (id, newPin, oldPin) { return write('PUT', '/member/pin', { pin: String(newPin), old: oldPin ? String(oldPin) : null }); },
+    // forgot PIN: an e-mailed code replaces needing the old PIN
+    requestPinForgotOtp: function () { return req('POST', '/member/pin/otp'); },
+    resetPinWithOtp: function (newPin, otp) { return write('POST', '/member/pin/reset', { pin: String(newPin), otp: otp }); },
     openTicket: function (userId, subject, message) { return write('POST', '/member/tickets', { subject: subject, message: message }); },
     replyTicket: function (ticketId, by, text) { return write('POST', (by === 'admin' ? '/admin' : '/member') + '/tickets/' + ticketId + '/reply', { text: text }); },
     // admin

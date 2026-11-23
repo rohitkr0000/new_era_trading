@@ -44,6 +44,8 @@ Route::middleware(['auth:sanctum', 'throttle:user', 'forget.snapshot'])->group(f
         Route::put('/profile', [MemberController::class, 'profile']);
         Route::post('/kyc', [MemberController::class, 'kycSubmit'])->middleware('throttle:kyc');
         Route::put('/pin', [MemberController::class, 'pin']);
+        Route::post('/pin/otp', [MemberController::class, 'pinForgotOtp'])->middleware('throttle:otp-request');
+        Route::post('/pin/reset', [MemberController::class, 'pinReset'])->middleware('throttle:otp-confirm');
         Route::post('/tickets', [MemberController::class, 'openTicket']);
         Route::post('/tickets/{id}/reply', [MemberController::class, 'replyTicket']);
     });
