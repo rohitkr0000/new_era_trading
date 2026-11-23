@@ -245,7 +245,7 @@
   }
   function register(d) {
     return req('POST', '/register', {
-      name: d.name, email: d.email, password: d.password, phone: d.phone || null, sponsorCode: d.sponsorCode,
+      name: d.name, email: d.email, password: d.password, phone: d.phone || null, pin: d.pin || null, sponsorCode: d.sponsorCode,
       leg: d.leg || 'left', parentId: d.parentId ? Number(d.parentId) : null, amount: d.amount ? Number(d.amount) : null
     }).then(function (r) {
       if (!r.ok) return r;
@@ -299,8 +299,8 @@
     transferToPurchase: function (userId, amount, pin) { return write('POST', '/member/transfer-self', { amount: Number(amount), pin: pin }); },
     // P2P is a 2-step flow: preview + e-mailed OTP first, then the transfer with the code
     lookupMember: function (code) { return req('GET', '/member/lookup/' + encodeURIComponent(String(code || '').trim())); },
-    requestTransferOtp: function (toCode, amount, pin) { return req('POST', '/member/transfer/otp', { toCode: toCode, amount: Number(amount), pin: pin }); },
-    transferToMember: function (fromId, toCode, amount, pin, otp) { return write('POST', '/member/transfer', { toCode: toCode, amount: Number(amount), pin: pin, otp: otp }); },
+    requestTransferOtp: function (toCode, amount, pin, source) { return req('POST', '/member/transfer/otp', { toCode: toCode, amount: Number(amount), source: source || 'purchase', pin: pin }); },
+    transferToMember: function (fromId, toCode, amount, pin, otp, source) { return write('POST', '/member/transfer', { toCode: toCode, amount: Number(amount), source: source || 'purchase', pin: pin, otp: otp }); },
     requestWithdrawalOtp: function (amount, method, account, pin) { return req('POST', '/member/withdrawals/otp', { amount: Number(amount), method: method, account: account, pin: pin }); },
     requestWithdrawal: function (userId, amount, method, account, pin, otp) { return write('POST', '/member/withdrawals', { amount: Number(amount), method: method, account: account, pin: pin, otp: otp }); },
     updateProfile: function (id, p) { return write('PUT', '/member/profile', { name: p.name, phone: p.phone, country: p.country, city: p.city, usdtAddress: p.usdtAddress }); },

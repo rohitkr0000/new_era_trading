@@ -88,12 +88,12 @@
   /* ---------- Purchase package ---------- */
   /* ---------- Purchase / Retopup: amount-based package, minimum joining $5 ---------- */
   M.page('/wallet/purchase', {
-    title: 'Purchase / Retopup',
+    title: 'Purchase Wallet',
     render: function (el, ctx) {
       var me = ctx.me, S = ctx.S, retopup = me.invested > 0, sp = me.sponsorId ? Store.byId(me.sponsorId) : null;
       var quick = [5, 10, 25, 50, 100, 250, 500];
       el.innerHTML = balances(me) + '<div class="m-split wide-l">' +
-        M.card(retopup ? 'Retopup — add a new package' : 'Join — activate your first package', '<div class="m-alert" hidden id="buyErr"></div><form id="buyForm" class="m-form">' +
+        M.card('Buy a package', '<div class="m-alert" hidden id="buyErr"></div><form id="buyForm" class="m-form">' +
           '<div class="m-seg"><label><input type="radio" name="src" value="purchase" checked><span>' + M.icon('wallet') + '<b>Purchase wallet</b><small>' + M.money(me.purchaseWallet || 0) + ' · Investment</small></span></label>' +
           '<label><input type="radio" name="src" value="income"><span>' + M.icon('coins') + '<b>Income wallet</b><small>' + M.money(me.wallet) + ' · Compounding</small></span></label></div>' +
           '<label class="m-lbl" style="display:block;font-weight:700;margin:.2rem 0 .4rem">Interest type</label>' +
@@ -102,7 +102,7 @@
           M.field('Package amount (USD)', '<input name="amount" type="number" min="' + S.minJoin + '" step="' + S.joinMultiple + '" required placeholder="' + S.currency + S.minJoin + ', ' + S.currency + (S.minJoin * 2) + ', ' + S.currency + (S.minJoin * 3) + '…">', 'Minimum ' + S.currency + S.minJoin + ', then in multiples of ' + S.currency + S.joinMultiple + ' (5, 10, 15, 20, 25…).') +
           '<div class="m-amts">' + quick.map(function (q) { return '<button type="button" class="mbtn line sm" data-amt="' + q + '">' + S.currency + q + '</button>'; }).join('') + '</div>' +
           '<ul class="m-kv sum" id="buySum"></ul>' +
-          '<button class="mbtn gold block" type="submit">' + M.icon('package') + (retopup ? 'Retopup now' : 'Join now') + '</button></form>', { icon: 'package' }) +
+          '<button class="mbtn gold block" type="submit">' + M.icon('package') + 'Buy Package</button></form>', { icon: 'package' }) +
         M.card('How your package earns', '<ul class="m-rules">' +
           '<li>' + M.icon('trend') + '<div><b>ROI ' + S.roiPct + '% per trading day</b><span>Credited Monday to Friday for ' + (S.roiDays || 25) + ' trading days, then the package cycle expires. No ROI on Saturday and Sunday. <a href="#/tools/calculator">Try the calculator</a>.</span></div></li>' +
           '<li>' + M.icon('users') + '<div><b>Your sponsor earns ' + (retopup ? S.retopupPct + '% retopup income' : S.directPct + '% direct referral income') + '</b><span>' + (sp ? M.esc(sp.name) + ' (' + M.esc(sp.code) + ')' : 'Company') + ' receives it on the amount you pay.</span></div></li>' +
@@ -137,7 +137,7 @@
           if (!pin) return null;
           return Store.purchasePackage(me.id, amount, src, pin, mode).then(function (r) {
             if (!r.ok) return M.alert(al, r.error);
-            M.toast((r.retopup ? 'Retopup of ' : 'Joined with ') + M.money(amount));
+            M.toast('Package purchased: ' + M.money(amount));
             M.go('/wallet/purchases');
           });
         });
@@ -248,18 +248,25 @@
       el.innerHTML = balances(me) + '<div class="m-split">' +
         M.card('P2P · send to a member', '<div class="m-alert" hidden id="wtErr"></div><form id="wtForm" class="m-form">' +
           M.field('Member ID', '<input name="to" required placeholder="e.g. NET1004" autocomplete="off">', '<span id="wtWho">Type the member ID — their name appears here so you can confirm it.</span>') +
-          M.field('Amount', '<input name="amount" type="number" min="' + (ctx.S.minTransfer || 1) + '" step="0.01" required>', 'Available in your purchase wallet: ' + M.money(me.purchaseWallet || 0)) +
+          '<label class="m-lbl" style="display:block;font-weight:700;margin:.2rem 0 .4rem">Pay from</label>' +
+          '<div class="m-seg"><label><input type="radio" name="src" value="purchase" checked><span>' + M.icon('wallet') + '<b>Purchase wallet</b><small>' + M.money(me.purchaseWallet || 0) + '</small></span></label>' +
+          '<label><input type="radio" name="src" value="income"><span>' + M.icon('coins') + '<b>Income wallet</b><small>' + M.money(me.wallet) + '</small></span></label></div>' +
+          M.field('Amount', '<input name="amount" type="number" min="' + (ctx.S.minTransfer || 1) + '" step="0.01" required>', '<span id="wtAvail">Available in your purchase wallet: ' + M.money(me.purchaseWallet || 0) + '</span>') +
           '<ul class="m-kv sum" id="wtSum"></ul>' +
           '<button class="mbtn gold block" type="submit">' + M.icon('swap') + 'Continue</button></form>' +
           '<p class="m-muted" style="font-size:.82rem;margin-bottom:0">P2P works every day, including Saturday and Sunday. The company keeps ' + (ctx.S.p2pFeePct || 0) + '% of the amount sent. Every transfer needs your PIN and a code we e-mail you.</p>', { icon: 'swap' }) +
         M.card('Recent member transfers', '<div id="wtT"></div>', { icon: 'history' }) + '</div>';
-      var f = document.getElementById('wtForm'), who = document.getElementById('wtWho'), sum = document.getElementById('wtSum');
+      var f = document.getElementById('wtForm'), who = document.getElementById('wtWho'), sum = document.getElementById('wtSum'), avail = document.getElementById('wtAvail');
       var lookT, feePct = ctx.S.p2pFeePct || 0;
       function calc() {
+        var src = f.src.value, bal = src === 'income' ? me.wallet : (me.purchaseWallet || 0);
+        avail.textContent = 'Available in your ' + (src === 'income' ? 'income' : 'purchase') + ' wallet: ' + M.money(bal);
         var a = Number(f.amount.value) || 0, fee = Math.round(a * feePct) / 100;
-        sum.innerHTML = a ? '<li><span>You send</span><b>' + M.money(a) + '</b></li><li><span>Company charge (' + feePct + '%)</span><b class="neg">−' + M.money(fee) + '</b></li><li class="tot"><span>They receive</span><b>' + M.money(a - fee) + '</b></li>' : '';
+        sum.innerHTML = a ? '<li><span>You send (' + (src === 'income' ? 'income wallet' : 'purchase wallet') + ')</span><b>' + M.money(a) + '</b></li><li><span>Company charge (' + feePct + '%)</span><b class="neg">−' + M.money(fee) + '</b></li><li class="tot"><span>They receive</span><b>' + M.money(a - fee) + '</b></li>' : '';
       }
-      f.amount.oninput = calc; calc();
+      f.amount.oninput = calc;
+      el.querySelectorAll('input[name=src]').forEach(function (r) { r.onchange = calc; });
+      calc();
       f.to.oninput = function () {          // live recipient check: the name is shown so you can confirm who you are paying
         var code = this.value.trim();
         clearTimeout(lookT);
@@ -274,19 +281,19 @@
       };
       f.onsubmit = function (e) {
         e.preventDefault();
-        var to = f.to.value.trim(), amount = f.amount.value, al = document.getElementById('wtErr');
+        var to = f.to.value.trim(), amount = f.amount.value, source = f.src.value, al = document.getElementById('wtErr');
         M.alert(al, '');
         M.askPin(me.id).then(function (pin) {
           if (!pin) return null;
-          return Store.requestTransferOtp(to, amount, pin).then(function (o) {          // step 1: checks + e-mailed code
+          return Store.requestTransferOtp(to, amount, pin, source).then(function (o) {          // step 1: checks + e-mailed code
             if (!o.ok) return M.alert(al, o.error);
             return M.askOtp({
               sentTo: o.sentTo,
-              summary: 'Send <b>' + M.money(o.amount) + '</b> to <b>' + M.esc(o.to.name) + '</b> (' + M.esc(o.to.code) + '). Company charge ' + M.money(o.fee) + ' — they receive <b>' + M.money(o.net) + '</b>.',
-              resend: function () { return Store.requestTransferOtp(to, amount, pin); }
+              summary: 'Send <b>' + M.money(o.amount) + '</b> from your <b>' + (source === 'income' ? 'income' : 'purchase') + ' wallet</b> to <b>' + M.esc(o.to.name) + '</b> (' + M.esc(o.to.code) + '). Company charge ' + M.money(o.fee) + ' — they receive <b>' + M.money(o.net) + '</b>.',
+              resend: function () { return Store.requestTransferOtp(to, amount, pin, source); }
             }).then(function (code) {
               if (!code) return null;
-              return Store.transferToMember(me.id, to, amount, pin, code).then(function (r) {   // step 2: the code must match
+              return Store.transferToMember(me.id, to, amount, pin, code, source).then(function (r) {   // step 2: the code must match
                 if (!r.ok) return M.alert(al, r.error);
                 M.toast('Sent ' + M.money(amount) + ' to ' + r.to.name);
                 ctx.refresh();

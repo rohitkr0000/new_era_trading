@@ -12,13 +12,12 @@
     { id: 'dashboard', label: 'Dashboard', icon: 'home', route: '/dashboard' },
     { id: 'network', label: 'Network', icon: 'network', items: [
       ['/network/team', 'Team Report', 'users', 'Your direct team and their growth'],
-      ['/network/levels', 'Team Level Report', 'layers', 'Members and business by level'],
-      ['/network/tree', 'Binary Tree', 'network', 'Left and right genealogy']
+      ['/network/levels', 'Team Level Report', 'layers', 'Members and business by level']
     ] },
     { id: 'wallet', label: 'Wallet', icon: 'wallet', items: [
       ['/deposit/new', 'Deposit USDT', 'card', 'Fund your purchase wallet (BEP20)'],
       ['/deposit/history', 'Deposit History', 'history', 'Every deposit and its status'],
-      ['/wallet/purchase', 'Purchase / Retopup', 'package', 'Join from $5 or add a new package'],
+      ['/wallet/purchase', 'Purchase Wallet', 'package', 'Join from $5 or add a new package'],
       ['/wallet/purchases', 'Purchased History', 'file', 'Packages, ROI days and status'],
       ['/wallet/compounding', 'Compounding', 'trend', 'Compounding balance and daily schedule'],
       ['/wallet/statement', 'Wallet Statement', 'list', 'Purchase wallet ledger'],
@@ -138,10 +137,50 @@
     }).join('') : '<p class="m-muted" style="padding:1rem">You are all caught up.</p>');
   }
 
+  /* ---------- e-mail must be verified before the dashboard unlocks (report requirement #9) ---------- */
+  function renderEmailGate() {
+    var app = document.getElementById('app');
+    app.innerHTML =
+      '<header class="m-top"><div class="m-wrap m-top-in">' +
+        '<a class="m-brand" href="' + base + 'index.html"><img src="' + base + 'images/logo.png" alt="New Era Trading"><span>New Era Trading<small>Member Hub</small></span></a>' +
+        '<div class="m-top-r"><button class="mbtn line sm" id="gateLogout">' + M.icon('logout') + 'Logout</button></div>' +
+      '</div></header>' +
+      '<main class="m-wrap" style="max-width:480px;margin:3rem auto">' +
+        M.card('Verify your e-mail to continue', '<div class="m-alert" hidden id="gateErr"></div>' +
+          '<p class="m-muted">We e-mailed a 6-digit code to <b>' + M.esc(me.email) + '</b>. Enter it below to unlock your dashboard.</p>' +
+          '<form id="gateForm" class="m-form">' +
+            M.field('Code', '<input name="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required placeholder="123456">') +
+            '<button class="mbtn gold block" type="submit">' + M.icon('check') + 'Verify e-mail</button>' +
+          '</form>' +
+          '<button class="mbtn line block" id="gateResend" type="button" style="margin-top:.6rem">Resend code</button>' +
+          '<p class="m-muted" style="font-size:.82rem;margin-top:1rem">Typed the wrong e-mail by mistake? Contact support — an admin can correct it for you.</p>', { icon: 'shield' }) +
+      '</main>';
+    document.getElementById('gateLogout').onclick = function () { Store.logout(); location.href = base + 'login.html'; };
+    document.getElementById('gateForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var err = document.getElementById('gateErr'); M.alert(err, '');
+      var btn = this.querySelector('button[type=submit]'); btn.disabled = true;
+      Store.verifyEmail(this.otp.value.trim()).then(function (r) {
+        btn.disabled = false;
+        if (!r.ok) return M.alert(err, r.error, 'bad');
+        M.toast('E-mail verified');
+        location.reload();
+      });
+    });
+    document.getElementById('gateResend').onclick = function () {
+      var b = this; b.disabled = true;
+      Store.requestEmailOtp().then(function (r) {
+        b.disabled = false;
+        M.toast(r.ok ? 'A new code was sent' : r.error, r.ok ? 'ok' : 'err');
+      });
+    };
+  }
+
   M.mount = function () {
     var u = Store.currentUser();
     if (!u || u.role !== 'member') { if (u) Store.logout(); location.replace(base + 'login.html'); return; }
     me = u;
+    if (! me.emailVerified) { renderEmailGate(); return; }
     var app = document.getElementById('app');
     app.innerHTML =
       '<header class="m-top"><div class="m-wrap m-top-in">' +

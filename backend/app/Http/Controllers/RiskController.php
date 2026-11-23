@@ -93,9 +93,9 @@ class RiskController extends Controller
         $admin = $this->admin($request);
         $u = User::where('role', 'member')->findOrFail($id);
         $d = $request->validate([
-            'email' => 'nullable|string|email|max:160', 'phone' => 'nullable|string|max:30',
+            'email' => 'nullable|string|email|max:160', 'phone' => ['nullable', 'string', 'regex:/^\d{10}$/'],
             'country' => 'nullable|string|max:60', 'city' => 'nullable|string|max:80', 'usdtAddress' => 'nullable|string|max:120',
-        ]);
+        ], ['phone.regex' => 'Enter a valid 10-digit mobile number (digits only).']);
         if (! array_filter($d, fn ($v) => $v !== null && $v !== '')) throw new PlanException('Change at least one field first.');
 
         $changes = [];
@@ -112,7 +112,7 @@ class RiskController extends Controller
         if (! empty($d['phone'])) {
             $phone = trim($d['phone']);
             $key = Phone::key($phone);
-            if ($key === null) throw new PlanException('Enter a valid mobile number (8–15 digits).');
+            if ($key === null) throw new PlanException('Enter a valid 10-digit mobile number (digits only).');
             if ($key !== $u->phone_key) {
                 if (User::where('phone_key', $key)->where('id', '!=', $u->id)->exists()) throw new PlanException('This mobile number is already registered.');
                 $changes['fromPhone'] = $u->phone;

@@ -1,4 +1,4 @@
-/* member/pages-network.js — Team Report · Team Level Report · Binary Tree */
+/* member/pages-network.js — Team Report · Team Level Report */
 (function () {
   'use strict';
 
@@ -12,7 +12,7 @@
     render: function (el, ctx) {
       var list = Store.directs(ctx.me.id).map(function (u, i) {
         return { sl: i + 1, u: u, code: u.code, name: u.name, phone: u.phone || '—', joined: u.joined, purchase: firstPurchase(u),
-          total: Store.teamSize(u.id), active: Store.activeTeam(u.id), pkg: u.invested || 0, leg: u.leg || '—' };
+          total: Store.teamSize(u.id), active: Store.activeTeam(u.id), pkg: u.invested || 0 };
       });
       el.innerHTML =
         '<div class="m-grid4">' +
@@ -85,55 +85,6 @@
       }
       form.addEventListener('submit', function (e) { e.preventDefault(); draw(); });
       form.addEventListener('reset', function () { setTimeout(draw, 0); });
-      draw();
-    }
-  });
-
-  /* ---------- Binary Tree ---------- */
-  M.page('/network/tree', {
-    title: 'Binary Tree',
-    render: function (el, ctx) {
-      var me = ctx.me, rootId = me.id, depth = 3;
-      el.innerHTML =
-        '<div class="m-grid4">' +
-          M.stat({ icon: 'left', label: 'Left leg', value: Store.countLeg(me.id, 'left') + ' <small>members</small>', sub: M.money(me.leftBV) + ' business', tone: 'blue' }) +
-          M.stat({ icon: 'right', label: 'Right leg', value: Store.countLeg(me.id, 'right') + ' <small>members</small>', sub: M.money(me.rightBV) + ' business', tone: 'sky' }) +
-          M.stat({ icon: 'check', label: 'Active in tree', value: (Store.countLeg(me.id, 'left') + Store.countLeg(me.id, 'right')) + ' <small>members</small>', sub: Store.activeTeam(me.id) + ' active in sponsor line', tone: 'binary' }) +
-          M.stat({ icon: 'trend', label: 'Total tree business', value: M.money(me.leftBV + me.rightBV), sub: 'left + right legs', tone: 'roi' }) +
-        '</div>' +
-        M.card('Genealogy', '<div class="m-filter"><label>Levels<select id="gDepth"><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label>' +
-          '<label>Find member<input id="gFind" placeholder="Member ID, e.g. NET1004"></label><button class="mbtn gold" id="gGo">' + M.icon('search') + 'Find</button>' +
-          '<button class="mbtn line" id="gHome">' + M.icon('home') + 'Back to me</button></div>' +
-          '<div class="m-legend-row"><span><i class="lg-a"></i>Active</span><span><i class="lg-i"></i>Inactive</span><span><i class="lg-e"></i>Empty slot — click to add a member there</span></div>' +
-          '<div class="m-tree-wrap"><div class="m-tree" id="gTree"></div></div>', { icon: 'network', sub: 'Click a member to view their branch.' });
-
-      function inMine(id) { var c = Store.byId(id); while (c) { if (c.id === me.id) return true; c = c.parentId ? Store.byId(c.parentId) : null; } return false; }
-      function node(u) {
-        var p = u.invested > 0 ? { color: '#f5b800', name: M.money(u.invested) } : null;
-        return '<button class="m-node' + (u.id === me.id ? ' me' : '') + (p ? '' : ' off') + '" data-id="' + u.id + '" title="' + M.esc(u.name + ' · ' + u.code) + '">' +
-          '<span class="m-av" style="' + (p ? 'background:' + p.color : '') + '">' + M.esc(UI.initials(u.name)) + '</span><b>' + M.esc(u.name) + '</b><small>' + M.esc(u.code) + '</small>' +
-          '<em>' + (p ? M.esc(p.name) : 'Inactive') + ' · L' + Store.countLeg(u.id, 'left') + ' / R' + Store.countLeg(u.id, 'right') + '</em></button>';
-      }
-      function slot(parent, leg) {
-        return '<a class="m-node empty" href="' + ctx.base + 'register.html?sponsor=' + encodeURIComponent(me.code) + '&parent=' + parent.id + '&leg=' + leg + '">' + M.icon('plus') + '<small>Add ' + leg + '</small></a>';
-      }
-      function build(u, d) {
-        var h = '<li>' + node(u);
-        if (d > 1) {
-          var l = u.leftId ? Store.byId(u.leftId) : null, r = u.rightId ? Store.byId(u.rightId) : null;
-          h += '<ul>' + (l ? build(l, d - 1) : '<li>' + slot(u, 'left') + '</li>') + (r ? build(r, d - 1) : '<li>' + slot(u, 'right') + '</li>') + '</ul>';
-        } else if (u.leftId || u.rightId) h += '<ul><li><span class="m-node more">' + M.icon('down') + '<small>more</small></span></li></ul>';
-        return h + '</li>';
-      }
-      function draw() { document.getElementById('gTree').innerHTML = '<ul>' + build(Store.byId(rootId), depth) + '</ul>'; }
-      document.getElementById('gDepth').onchange = function () { depth = parseInt(this.value, 10); draw(); };
-      document.getElementById('gHome').onclick = function () { rootId = me.id; draw(); };
-      document.getElementById('gGo').onclick = function () {
-        var u = Store.byCode(document.getElementById('gFind').value);
-        if (!u || !inMine(u.id)) return M.toast('Member not found in your tree', 'err');
-        rootId = u.id; draw();
-      };
-      document.getElementById('gTree').addEventListener('click', function (e) { var b = e.target.closest('button.m-node'); if (b) { rootId = Number(b.dataset.id); draw(); } });
       draw();
     }
   });

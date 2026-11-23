@@ -10,6 +10,7 @@ use App\Support\Settings;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 /**
  * The New Era Trading compensation engine.
@@ -158,8 +159,9 @@ class PlanEngine
 
         $email = strtolower(trim($d['email'] ?? ''));
         $phone = trim($d['phone'] ?? '');
+        if (! preg_match('/^\d{10}$/', $phone)) throw new PlanException('Enter a valid 10-digit mobile number (digits only).');
         $phoneKey = Phone::key($phone);
-        if ($phoneKey === null) throw new PlanException('Enter a valid mobile number (8–15 digits).');
+        if ($phoneKey === null) throw new PlanException('Enter a valid 10-digit mobile number (digits only).');
         if (User::where('email', $email)->exists()) throw new PlanException('This email is already registered.');
         if (User::where('phone_key', $phoneKey)->exists()) throw new PlanException('This mobile number is already registered.');
 
@@ -168,6 +170,15 @@ class PlanEngine
         } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {   // two sign-ups racing for the same email / mobile
             throw new PlanException('This email or mobile number is already registered.');
         }
+    }
+
+    /** A random, unique, non-sequential 6-digit member ID (no prefix, so it gives away neither join order nor member count). */
+    private static function generateCode(): string
+    {
+        do {
+            $code = (string) random_int(100000, 999999);
+        } while (User::where('code', $code)->exists());
+        return $code;
     }
 
     private function createMember(array $d, bool $root, ?string $amount, string $email, string $phone, string $phoneKey): User
@@ -182,8 +193,9 @@ class PlanEngine
             $u = User::create([
                 'name' => trim($d['name']), 'email' => $email, 'password' => $d['password'],
                 'phone' => $phone, 'phone_key' => $phoneKey, 'role' => 'member', 'joined_at' => Carbon::now(),
+                'txn_pin' => ! empty($d['pin']) ? Hash::make($d['pin']) : null,   // set at registration (the register form now requires it)
             ]);
-            $u->code = 'NET' . (1000 + $u->id);
+            $u->code = self::generateCode();
 
             if ($sponsor) {
                 $leg = ($d['leg'] ?? 'left') === 'right' ? 'right' : 'left';

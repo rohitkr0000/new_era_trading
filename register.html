@@ -29,25 +29,41 @@
 
       <div class="form-error" id="err" hidden></div>
 
+      <div class="row" style="display:flex;gap:.5rem;align-items:center;margin-bottom:1.1rem;font-size:.84rem;font-weight:700">
+        <span id="dot1" style="color:var(--primary)">① Account details</span><span style="color:var(--muted)">→</span><span id="dot2" style="color:var(--muted)">② Transaction PIN</span>
+      </div>
+
       <form id="regForm" novalidate>
-        <div class="field">
-          <label for="sponsor">Sponsor code</label>
-          <input id="sponsor" name="sponsorCode" placeholder="e.g. NET1001" required>
-          <div class="hint" id="sponsorHint">Ask the person who invited you for their code.</div>
-          <div class="hint" id="slotHint" hidden></div>
+        <div id="step1">
+          <div class="field">
+            <label for="sponsor">Sponsor code</label>
+            <input id="sponsor" name="sponsorCode" placeholder="e.g. NET1001" required>
+            <div class="hint" id="sponsorHint">Ask the person who invited you for their code.</div>
+            <div class="hint" id="slotHint" hidden></div>
+          </div>
+
+          <div class="field"><label for="name">Full name</label><input id="name" name="name" autocomplete="name" required></div>
+          <div class="grid grid-2" style="gap:.8rem">
+            <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" required></div>
+            <div class="field"><label for="phone">Mobile number</label><input id="phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" required pattern="\d{10}" minlength="10" maxlength="10" placeholder="e.g. 9876543210"><div class="hint">Exactly 10 digits, no country code or symbols. One account per mobile number and per email.</div></div>
+          </div>
+          <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" minlength="8" pattern="(?=.*[A-Za-z])(?=.*[0-9]).{8,}" title="At least 8 characters with letters and digits" autocomplete="new-password" required><div class="hint">At least 8 characters, with letters and digits.</div></div>
+          <div class="field" id="amountField"><label for="amount">Joining amount (USD)</label><input id="amount" name="amount" type="number" min="5" step="5" placeholder="$5, $10, $15… (leave empty to activate later)">
+            <div class="hint" id="amountHint">Minimum joining is $5. Payment is simulated in this demo.</div></div>
+
+          <div class="field"><label style="font-weight:400"><input type="checkbox" id="terms" style="width:auto"> I agree to the terms and income disclaimer.</label></div>
+          <button class="btn btn-primary btn-block" type="button" id="toStep2">Next: Set Transaction PIN →</button>
         </div>
 
-        <div class="field"><label for="name">Full name</label><input id="name" name="name" autocomplete="name" required></div>
-        <div class="grid grid-2" style="gap:.8rem">
-          <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" required></div>
-          <div class="field"><label for="phone">Mobile number</label><input id="phone" name="phone" type="tel" autocomplete="tel" required minlength="8" maxlength="20" placeholder="e.g. 9876543210"><div class="hint">One account per mobile number and per email.</div></div>
+        <div id="step2" hidden>
+          <div class="field"><label for="pin">Transaction PIN</label><input id="pin" name="pin" type="password" inputmode="numeric" autocomplete="off" pattern="\d{4,6}" minlength="4" maxlength="6" placeholder="4 to 6 digits">
+            <div class="hint">This PIN guards your withdrawals and P2P transfers. Keep it different from your password and never share it.</div></div>
+          <div class="field"><label for="pinConfirm">Confirm PIN</label><input id="pinConfirm" type="password" inputmode="numeric" autocomplete="off" pattern="\d{4,6}" minlength="4" maxlength="6" placeholder="Re-enter the PIN"></div>
+          <div class="row" style="display:flex;gap:.6rem">
+            <button class="btn btn-outline" type="button" id="toStep1" style="flex:1">← Back</button>
+            <button class="btn btn-primary" type="submit" style="flex:2">Create account</button>
+          </div>
         </div>
-        <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" minlength="8" pattern="(?=.*[A-Za-z])(?=.*[0-9]).{8,}" title="At least 8 characters with letters and digits" autocomplete="new-password" required><div class="hint">At least 8 characters, with letters and digits.</div></div>
-        <div class="field" id="amountField"><label for="amount">Joining amount (USD)</label><input id="amount" name="amount" type="number" min="5" step="5" placeholder="$5, $10, $15… (leave empty to activate later)">
-          <div class="hint" id="amountHint">Minimum joining is $5. Payment is simulated in this demo.</div></div>
-
-        <div class="field"><label style="font-weight:400"><input type="checkbox" id="terms" style="width:auto"> I agree to the terms and income disclaimer.</label></div>
-        <button class="btn btn-primary btn-block" type="submit">Create account</button>
       </form>
     </div>
   </main>
@@ -103,20 +119,45 @@
     form.sponsorCode.addEventListener('input', checkSponsor);
     checkSponsor();
 
+    // two steps: account details, then a required Transaction PIN. Step 2's fields are only "required" once shown,
+    // so reportValidity() on step 1 never blocks on them.
+    var step1 = document.getElementById('step1'), step2 = document.getElementById('step2');
+    var dot1 = document.getElementById('dot1'), dot2 = document.getElementById('dot2');
+    var pinEl = document.getElementById('pin'), pinConfirmEl = document.getElementById('pinConfirm');
+    pinEl.required = false; pinConfirmEl.required = false;
+
+    document.getElementById('toStep2').onclick = function () {
+      err.hidden = true;
+      if (!form.reportValidity()) return;
+      if (!document.getElementById('terms').checked) { err.textContent = 'Please accept the terms to continue.'; err.hidden = false; window.scrollTo(0, 0); return; }
+      var amt = Number(form.amount.value);
+      if (!form.amount.disabled && form.amount.value !== '' && (amt < 5 || Math.round(amt * 100) % 500 !== 0)) { err.textContent = 'Joining amount must be at least $5 and a multiple of $5 (5, 10, 15, 20…).'; err.hidden = false; return; }
+      step1.hidden = true; step2.hidden = false;
+      pinEl.required = true; pinConfirmEl.required = true;
+      dot1.style.color = 'var(--muted)'; dot2.style.color = 'var(--primary)';
+      pinEl.focus();
+    };
+    document.getElementById('toStep1').onclick = function () {
+      err.hidden = true;
+      step2.hidden = true; step1.hidden = false;
+      pinEl.required = false; pinConfirmEl.required = false;
+      dot1.style.color = 'var(--primary)'; dot2.style.color = 'var(--muted)';
+    };
+
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       err.hidden = true;
-      if (!document.getElementById('terms').checked) { err.textContent = 'Please accept the terms to continue.'; err.hidden = false; return; }
-      var amt = Number(form.amount.value);
-      if (!form.amount.disabled && form.amount.value !== '' && (amt < 5 || Math.round(amt * 100) % 500 !== 0)) { err.textContent = 'Joining amount must be at least $5 and a multiple of $5 (5, 10, 15, 20…).'; err.hidden = false; return; }
+      if (step2.hidden) return;   // guard: submit should only happen from step 2
+      if (!form.reportValidity()) return;
+      if (pinEl.value !== pinConfirmEl.value) { err.textContent = 'The PIN and confirmation do not match.'; err.hidden = false; return; }
       var btn = form.querySelector('button[type=submit]');
       btn.disabled = true;
       Store.register({
-        name: form.name.value, email: form.email.value, phone: form.phone.value, password: form.password.value,
+        name: form.name.value, email: form.email.value, phone: form.phone.value, password: form.password.value, pin: pinEl.value,
         sponsorCode: form.sponsorCode.value, amount: form.amount.disabled ? '' : form.amount.value, parentId: parentId
       }).then(function (r) {
         btn.disabled = false;
-        if (!r.ok) { err.textContent = r.error; err.hidden = false; window.scrollTo(0, 0); return; }
+        if (!r.ok) { err.textContent = r.error; err.hidden = false; step1.hidden = false; step2.hidden = true; dot1.style.color = 'var(--primary)'; dot2.style.color = 'var(--muted)'; window.scrollTo(0, 0); return; }
         location.href = 'user/dashboard.html';
       });
     });

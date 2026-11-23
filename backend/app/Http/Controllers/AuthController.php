@@ -36,12 +36,17 @@ class AuthController extends Controller
             'name' => 'required|string|max:120',
             'email' => 'required|email|max:160|unique:users,email',
             'password' => $this->passwordRule(),
-            'phone' => 'required|string|min:8|max:30',
+            'phone' => ['required', 'string', 'regex:/^\d{10}$/'],
+            'pin' => ['required', 'regex:/^\d{4,6}$/'],
             'sponsorCode' => 'required|string|max:20',
             'leg' => 'nullable|in:left,right',
             'parentId' => 'nullable|integer',
             'amount' => 'nullable|numeric|min:0',
-        ], ['email.unique' => 'This email is already registered.', 'phone.required' => 'Your mobile number is required.']);
+        ], [
+            'email.unique' => 'This email is already registered.', 'phone.required' => 'Your mobile number is required.',
+            'phone.regex' => 'Enter a valid 10-digit mobile number (digits only).',
+            'pin.required' => 'Set a transaction PIN to continue.', 'pin.regex' => 'PIN must be 4 to 6 digits.',
+        ]);
 
         // A joining amount at sign-up is a simulated payment. Outside demo mode money only enters through a verified deposit.
         if (! config('app.demo_mode')) unset($d['amount']);

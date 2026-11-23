@@ -97,8 +97,10 @@ class WalletService
      * the company charge and what the receiver gets. Throws a PlanException when the transfer is not possible.
      * @return array{to: User, amount: string, fee: string, net: string}
      */
-    public function previewTransfer(User $member, string $toCode, $amount): array
+    /** @param string $source "purchase" or "income" — which of the sender's wallets pays for the transfer. */
+    public function previewTransfer(User $member, string $toCode, $amount, string $source = 'purchase'): array
     {
+        $source = $source === 'income' ? 'income' : 'purchase';
         $s = Settings::all();
         $amount = Money::r($amount);
         $to = User::where('code', strtoupper(trim($toCode)))->where('role', 'member')->first();
@@ -106,38 +108,47 @@ class WalletService
         if ($to->id === $member->id) throw new PlanException('You cannot transfer to yourself.');
         if (! Money::pos($amount)) throw new PlanException('Enter a valid amount.');
         if (Money::cmp($amount, $s['minTransfer'] ?? 1) < 0) throw new PlanException('Minimum transfer is ' . $s['currency'] . ($s['minTransfer'] ?? 1) . '.');
-        if (Money::cmp($amount, User::where('id', $member->id)->value('purchase_wallet')) > 0) throw new PlanException('Insufficient purchase wallet balance.');
+        $col = $source === 'income' ? 'wallet' : 'purchase_wallet';
+        if (Money::cmp($amount, User::where('id', $member->id)->value($col)) > 0) {
+            throw new PlanException('Insufficient ' . $source . ' wallet balance.');
+        }
         $fee = Money::pct($amount, $s['p2pFeePct'] ?? 0);
-        return ['to' => $to, 'amount' => $amount, 'fee' => $fee, 'net' => Money::sub($amount, $fee)];
+        return ['to' => $to, 'amount' => $amount, 'fee' => $fee, 'net' => Money::sub($amount, $fee), 'source' => $source];
     }
 
     /**
-     * P2P (member to member, by member ID), purchase wallet to purchase wallet. Allowed every day including weekends.
-     * The company keeps p2pFeePct % of the amount sent; the receiver gets the rest.
+     * P2P (member to member, by member ID), from the sender's purchase OR income wallet — always into the receiver's
+     * purchase wallet. Allowed every day including weekends. The company keeps p2pFeePct % of the amount sent.
      */
-    public function transferToMember(User $member, string $toCode, $amount): User
+    public function transferToMember(User $member, string $toCode, $amount, string $source = 'purchase'): User
     {
         $s = Settings::all();
-        $p = $this->previewTransfer($member, $toCode, $amount);
+        $p = $this->previewTransfer($member, $toCode, $amount, $source);
         $amount = $p['amount'];
         $to = $p['to'];
+        $source = $p['source'];
 
-        return DB::transaction(function () use ($member, $to, $amount, $s) {
+        return DB::transaction(function () use ($member, $to, $amount, $s, $source) {
             // lock both rows in id order to avoid deadlocks
             $ids = [$member->id, $to->id];
             sort($ids);
             $locked = User::whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
             $from = $locked[$member->id];
             $dest = $locked[$to->id];
-            if (Money::cmp($amount, $from->purchase_wallet) > 0) throw new PlanException('Insufficient purchase wallet balance.');
+            $col = $source === 'income' ? 'wallet' : 'purchase_wallet';
+            if (Money::cmp($amount, $from->$col) > 0) throw new PlanException('Insufficient ' . $source . ' wallet balance.');
             $fee = Money::pct($amount, $s['p2pFeePct'] ?? 0);
             $net = Money::sub($amount, $fee);
-            $this->plan->walletMove($from, 'transfer-out', Money::sub('0', $amount), 'Transfer to ' . $dest->name . ' (' . $dest->code . ')');
+            if ($source === 'income') {
+                $this->plan->debit($from, 'transfer', $amount, 'Transfer to ' . $dest->name . ' (' . $dest->code . ')');
+            } else {
+                $this->plan->walletMove($from, 'transfer-out', Money::sub('0', $amount), 'Transfer to ' . $dest->name . ' (' . $dest->code . ')');
+            }
             $this->plan->walletMove($dest, 'transfer-in', $net, 'Received from ' . $from->name . ' (' . $from->code . ')' . (Money::pos($fee) ? ' — ' . $s['currency'] . $fee . ' company charge deducted' : ''));
             $now = Carbon::now();
             DB::table('transfers')->insert(['kind' => 'member', 'from_id' => $from->id, 'to_id' => $dest->id, 'amount' => $amount, 'fee' => $fee, 'net' => $net, 'created_at' => $now]);
             if (Money::pos($fee)) {
-                DB::table('deductions')->insert(['user_id' => $from->id, 'withdrawal_id' => null, 'note' => 'P2P charge @ ' . (float) ($s['p2pFeePct'] ?? 0) . ' % on ' . $s['currency'] . $amount . ' to ' . $dest->code, 'amount' => $fee, 'status' => 'Deducted', 'created_at' => $now]);
+                DB::table('deductions')->insert(['user_id' => $from->id, 'withdrawal_id' => null, 'note' => 'P2P charge @ ' . (float) ($s['p2pFeePct'] ?? 0) . ' % on ' . $s['currency'] . $amount . ' to ' . $dest->code . ' (' . $source . ' wallet)', 'amount' => $fee, 'status' => 'Deducted', 'created_at' => $now]);
             }
             return $dest;
         });

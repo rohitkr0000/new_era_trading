@@ -99,16 +99,24 @@ try {
 
     section('One account per email and per mobile number');
     $A = $plan->register(['name' => 'A', 'email' => 'dup_a@test.local', 'password' => 'secret1', 'phone' => '9876543210', 'sponsorCode' => $root0->code], false);
+    check('a new member gets a random 6-digit ID, no "NET" prefix', (bool) preg_match('/^\d{6}$/', $A->code), $A->code);
     throws('same email is rejected', fn () => $plan->register(['name' => 'B', 'email' => 'dup_a@test.local', 'password' => 'secret1', 'phone' => '9123456780', 'sponsorCode' => $root0->code], false), 'email is already');
     throws('same email in different case is rejected', fn () => $plan->register(['name' => 'B', 'email' => 'DUP_A@Test.Local', 'password' => 'secret1', 'phone' => '9123456780', 'sponsorCode' => $root0->code], false), 'email is already');
     throws('same mobile number is rejected', fn () => $plan->register(['name' => 'B', 'email' => 'dup_b@test.local', 'password' => 'secret1', 'phone' => '9876543210', 'sponsorCode' => $root0->code], false), 'mobile number is already');
-    foreach (['+91 98765 43210', '09876543210', '98765-43210', '+91-9876543210'] as $fmt) {
-        throws("same number written as \"$fmt\" is rejected", fn () => $plan->register(['name' => 'B', 'email' => 'dup_' . md5($fmt) . '@test.local', 'password' => 'secret1', 'phone' => $fmt, 'sponsorCode' => $root0->code], false), 'mobile number is already');
+    // only a bare 10-digit number is accepted now — no +91, spaces, dashes or letters (report requirement #8)
+    foreach (['+91 98765 43210', '09876543210', '98765-43210', '+91-9876543210', 'abc1234567', '98765432100', '987654321'] as $fmt) {
+        throws("badly formatted number \"$fmt\" is rejected (10 digits only)", fn () => $plan->register(['name' => 'B', 'email' => 'dup_' . md5($fmt) . '@test.local', 'password' => 'secret1', 'phone' => $fmt, 'sponsorCode' => $root0->code], false), 'valid 10-digit mobile number');
     }
     throws('missing mobile number is rejected', fn () => $plan->register(['name' => 'B', 'email' => 'dup_c@test.local', 'password' => 'secret1', 'phone' => '', 'sponsorCode' => $root0->code], false), 'mobile number');
     throws('too-short mobile number is rejected', fn () => $plan->register(['name' => 'B', 'email' => 'dup_d@test.local', 'password' => 'secret1', 'phone' => '12345', 'sponsorCode' => $root0->code], false), 'mobile number');
     check('a different mobile + email registers fine', (bool) $plan->register(['name' => 'C', 'email' => 'dup_e@test.local', 'password' => 'secret1', 'phone' => '9123456780', 'sponsorCode' => $root0->code], false));
     eq('Phone::key normalises +91 / 0 prefixes', Phone::key('+91 98765 43210') . '|' . Phone::key('09876543210'), '9876543210|9876543210');
+
+    section('Member IDs are random and unique (report requirement #7)');
+    $codes = [];
+    for ($i = 0; $i < 25; $i++) { $m = $mk('idfmt' . $i, $root0, 5); $codes[] = $m->code; }
+    check('every generated code is a plain 6-digit number', ! array_filter($codes, fn ($c) => ! preg_match('/^\d{6}$/', $c)), implode(',', $codes));
+    check('25 freshly generated codes are all unique', count($codes) === count(array_unique($codes)));
     try { DB::table('users')->insert(['name' => 'x', 'email' => 'raw@test.local', 'password' => 'x', 'phone_key' => '9876543210', 'role' => 'member']); check('database unique index blocks a duplicate mobile', false, 'insert succeeded'); }
     catch (\Illuminate\Database\UniqueConstraintViolationException $e) { check('database unique index blocks a duplicate mobile (race-proof)', true); }
     throws('invalid sponsor code is rejected', fn () => $plan->register(['name' => 'x', 'email' => 'x@test.local', 'password' => 'secret1', 'phone' => '9000000001', 'sponsorCode' => 'NOPE99'], false), 'Invalid sponsor');
@@ -295,6 +303,21 @@ try {
     eq('Saturday P2P: sender -$100, receiver +$95', Money::r(User::find($P1->id)->purchase_wallet) . '/' . Money::r(User::find($P2->id)->purchase_wallet), '100.00/95.00');
     check('Saturday: buying a package (top-up) works', (bool) $plan->purchase(User::find($P2->id), 50, 'purchase'));
     check('Saturday: a new member can register', (bool) $mk('satreg', $root0, 10));
+
+    section('P2P from the Income wallet too (report requirement #5), not only the purchase wallet');
+    $I1 = $mk('p2pi1', $root0, 100); $I2 = $mk('p2pi2', $root0, 100);
+    DB::table('users')->where('id', $I1->id)->update(['wallet' => '50.00']);
+    DB::table('ledger')->insert(['user_id' => $I1->id, 'type' => 'roi', 'amount' => '50.00', 'note' => 'test income', 'created_at' => Carbon::now()]);
+    $i1Purchase0 = $I1->fresh()->purchase_wallet; $i2Purchase0 = $I2->fresh()->purchase_wallet;
+    $pvI = $wallet->previewTransfer(User::find($I1->id), $I2->code, 20, 'income');
+    eq('income-wallet preview: 5% fee on $20 = $1.00', $pvI['fee'], '1.00');
+    throws('sending more than the income balance is refused', fn () => $wallet->previewTransfer(User::find($I1->id), $I2->code, 999, 'income'), 'Insufficient income');
+    $wallet->transferToMember(User::find($I1->id), $I2->code, 20, 'income');
+    eq('sender\'s income wallet is debited the full $20', User::find($I1->id)->wallet, '30.00');
+    eq('sender\'s purchase wallet is untouched', Money::r(User::find($I1->id)->purchase_wallet), Money::r($i1Purchase0));
+    eq('receiver\'s purchase wallet gets $20 minus the 5% fee = $19.00', Money::sub(User::find($I2->id)->purchase_wallet, $i2Purchase0), '19.00');
+    eq('the charge is recorded noting it came from the income wallet', DB::table('deductions')->where('user_id', $I1->id)->where('note', 'like', '%income wallet%')->value('amount'), '1.00');
+    throws('no source given still checks the purchase wallet by default (old behaviour unchanged)', fn () => $wallet->previewTransfer(User::find($I1->id), $I2->code, 5), 'Insufficient purchase');
     at('2026-11-22 06:30:00');   // Sunday
     check('Sunday: withdrawal is refused', (function () use ($wallet, $P1) { try { $wallet->requestWithdrawal(User::find($P1->id), 5, 'USDT', '0xabc'); return false; } catch (PlanException $e) { return str_contains($e->getMessage(), 'Weekend'); } })());
 

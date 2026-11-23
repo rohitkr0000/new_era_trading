@@ -113,25 +113,25 @@ class MemberController extends Controller
     public function transferOtp(Request $request, OtpService $otp): JsonResponse
     {
         $u = $this->member($request);
-        $d = $request->validate(['toCode' => 'required|string|max:20', 'amount' => 'required|numeric|min:0', 'pin' => 'required']);
+        $d = $request->validate(['toCode' => 'required|string|max:20', 'amount' => 'required|numeric|min:0', 'source' => 'nullable|in:purchase,income', 'pin' => 'required']);
         $this->checkPin($request);
-        $p = $this->wallet->previewTransfer($u, $d['toCode'], $d['amount']);
+        $p = $this->wallet->previewTransfer($u, $d['toCode'], $d['amount'], $d['source'] ?? 'purchase');
         $c = Settings::get('currency');
-        $otp->send($u, 'transfer', 'P2P transfer of ' . $c . $p['amount'] . ' to ' . $p['to']->name . ' (' . $p['to']->code . ')', OtpService::context('p2p', $p['to']->code, $p['amount']));
+        $otp->send($u, 'transfer', 'P2P transfer of ' . $c . $p['amount'] . ' to ' . $p['to']->name . ' (' . $p['to']->code . ')', OtpService::context('p2p', $p['to']->code, $p['amount'], $p['source']));
         return response()->json(['ok' => true, 'sentTo' => preg_replace('/(?<=.).(?=[^@]*@)/', '*', $u->email),
-            'to' => ['name' => $p['to']->name, 'code' => $p['to']->code], 'amount' => $p['amount'], 'fee' => $p['fee'], 'net' => $p['net']]);
+            'to' => ['name' => $p['to']->name, 'code' => $p['to']->code], 'amount' => $p['amount'], 'fee' => $p['fee'], 'net' => $p['net'], 'source' => $p['source']]);
     }
 
     /** Step 2: the transfer happens only when the e-mailed code matches. */
     public function transferMember(Request $request, OtpService $otp): JsonResponse
     {
         $u = $this->member($request);
-        $d = $request->validate(['toCode' => 'required|string|max:20', 'amount' => 'required|numeric|min:0', 'pin' => 'required', 'otp' => 'required|string']);
+        $d = $request->validate(['toCode' => 'required|string|max:20', 'amount' => 'required|numeric|min:0', 'source' => 'nullable|in:purchase,income', 'pin' => 'required', 'otp' => 'required|string']);
         $this->checkPin($request);
-        $p = $this->wallet->previewTransfer($u, $d['toCode'], $d['amount']);
-        $otp->verify($u, 'transfer', trim($d['otp']), OtpService::context('p2p', $p['to']->code, $p['amount']));
-        $to = $this->wallet->transferToMember($u, $d['toCode'], $d['amount']);
-        Audit::log('transfer.p2p', $u, 'user#' . $to->id, ['to' => $to->code, 'amount' => $p['amount'], 'fee' => $p['fee']]);
+        $p = $this->wallet->previewTransfer($u, $d['toCode'], $d['amount'], $d['source'] ?? 'purchase');
+        $otp->verify($u, 'transfer', trim($d['otp']), OtpService::context('p2p', $p['to']->code, $p['amount'], $p['source']));
+        $to = $this->wallet->transferToMember($u, $d['toCode'], $d['amount'], $p['source']);
+        Audit::log('transfer.p2p', $u, 'user#' . $to->id, ['to' => $to->code, 'amount' => $p['amount'], 'fee' => $p['fee'], 'source' => $p['source']]);
         Notifier::transferDone($u, $to, $p['amount'], $p['fee'], $p['net']);
         return response()->json(['ok' => true, 'to' => ['name' => $to->name, 'code' => $to->code], 'fee' => $p['fee'], 'net' => $p['net']]);
     }
@@ -179,10 +179,10 @@ class MemberController extends Controller
     public function profile(Request $request): JsonResponse
     {
         $u = $this->member($request);
-        $d = $request->validate(['name' => 'required|string|max:120', 'phone' => 'nullable|string|max:30', 'country' => 'nullable|string|max:60',
-            'city' => 'nullable|string|max:80', 'usdtAddress' => 'nullable|string|max:120']);
+        $d = $request->validate(['name' => 'required|string|max:120', 'phone' => ['required', 'string', 'regex:/^\d{10}$/'], 'country' => 'nullable|string|max:60',
+            'city' => 'nullable|string|max:80', 'usdtAddress' => 'nullable|string|max:120'], ['phone.regex' => 'Enter a valid 10-digit mobile number (digits only).']);
         $key = Phone::key($d['phone'] ?? '');
-        if ($key === null) throw new PlanException('Enter a valid mobile number (8–15 digits).');
+        if ($key === null) throw new PlanException('Enter a valid 10-digit mobile number (digits only).');
         if (\App\Models\User::where('phone_key', $key)->where('id', '!=', $u->id)->exists()) throw new PlanException('This mobile number is already registered.');
         $u->phone_key = $key;
         $u->fill(['name' => trim($d['name']), 'phone' => $d['phone'], 'country' => $d['country'] ?? null, 'city' => $d['city'] ?? null, 'usdt_address' => $d['usdtAddress'] ?? null])->save();

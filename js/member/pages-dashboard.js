@@ -47,7 +47,7 @@
             '<a class="mbtn glass" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent('Join my team on New Era Trading: ' + link) + '">' + M.icon('share') + 'WhatsApp</a>' +
             '<a class="mbtn glass" target="_blank" rel="noopener" href="https://t.me/share/url?url=' + encodeURIComponent(link) + '">' + M.icon('share') + 'Telegram</a></div></div>' +
           '<div class="m-quick">' +
-            [['/deposit/new', 'card', 'Deposit'], ['/wallet/purchase', 'package', p ? 'Retopup' : 'Join now'], ['/withdraw/request', 'bank', 'Withdraw'], ['/wallet/transfer', 'swap', 'Transfer'], ['/network/tree', 'network', 'My tree']]
+            [['/deposit/new', 'card', 'Deposit'], ['/wallet/purchase', 'package', 'Buy Package'], ['/withdraw/request', 'bank', 'Withdraw'], ['/wallet/transfer', 'swap', 'Transfer'], ['/network/team', 'network', 'My team']]
               .map(function (q) { return '<a href="#' + q[0] + '">' + M.icon(q[1]) + '<span>' + q[2] + '</span></a>'; }).join('') +
           '</div>' +
         '</section>' +
@@ -88,15 +88,13 @@
           '<li><span>' + M.icon('network') + 'Total team (active)</span><b>' + Store.teamSize(me.id) + ' <small>(' + Store.activeTeam(me.id) + ')</small></b></li>' +
           '<li><span>' + M.icon('clock') + 'Today direct business</span><b>' + M.money(Store.directBusiness(me.id, today.getTime())) + '</b></li>' +
           '<li><span>' + M.icon('package') + 'Total direct business</span><b>' + M.money(Store.directBusiness(me.id)) + '</b></li>' +
-          '<li><span>' + M.icon('layers') + 'Levels unlocked</span><b>' + Math.min(12, cap.directs) + ' / ' + S.levelPct.length + ' <small>(' + cap.directs + ' active directs)</small></b></li>' +
-          '<li><span>' + M.icon('left') + 'Left leg business</span><b>' + M.money(me.leftBV) + ' <small>· ' + Store.countLeg(me.id, 'left') + '</small></b></li>' +
-          '<li><span>' + M.icon('right') + 'Right leg business</span><b>' + M.money(me.rightBV) + ' <small>· ' + Store.countLeg(me.id, 'right') + '</small></b></li></ul>', { cls: 'b-4', icon: 'network', actions: '<a class="mbtn line sm" href="#/network/levels">Levels</a>' }) +
+          '<li><span>' + M.icon('layers') + 'Levels unlocked</span><b>' + Math.min(12, cap.directs) + ' / ' + S.levelPct.length + ' <small>(' + cap.directs + ' active directs)</small></b></li></ul>', { cls: 'b-4', icon: 'network', actions: '<a class="mbtn line sm" href="#/network/levels">Levels</a>' }) +
         M.card('My packages', orders.length ? '<ul class="m-orders">' + orders.slice(0, 4).map(function (o) {
             var ret = o.paidDays * o.pct, pct = Math.min(100, Math.round(ret / Math.max(1, cap.mult * 100) * 100));
             return '<li><div class="row1"><b>' + M.esc(o.ref) + ' · ' + M.money(o.amount) + '</b>' + M.badge(o.status === 'running' ? (cap.cap && !cap.left ? 'Cap reached' : 'Running') : o.status === 'closed' ? 'Closed' : 'Active', o.status === 'running' && (!cap.cap || cap.left) ? 'info' : 'muted') + '</div>' +
               '<div class="row2"><span>' + M.esc(o.kind) + ' · ' + M.esc(o.option) + ' · ' + M.date(o.date) + '</span><span>' + o.paidDays + ' trading days · ' + ret + '% ROI</span></div>' +
               '<div class="m-bar sm"><i style="width:' + pct + '%"></i></div></li>';
-          }).join('') + '</ul>' : M.empty('No package yet', 'Join from ' + S.currency + S.minJoin + ' to start earning ' + S.roiPct + '% per trading day.', '<a class="mbtn gold sm" href="#/wallet/purchase">Join now</a>'),
+          }).join('') + '</ul>' : M.empty('No package yet', 'Join from ' + S.currency + S.minJoin + ' to start earning ' + S.roiPct + '% per trading day.', '<a class="mbtn gold sm" href="#/wallet/purchase">Buy Package</a>'),
           { cls: 'b-4', icon: 'package', actions: '<a class="mbtn line sm" href="#/wallet/purchases">History</a>' }) +
 
         // ---- announcements / news
