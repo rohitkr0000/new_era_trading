@@ -10,7 +10,7 @@
     render: function (el, ctx) {
       var me = ctx.me, S = ctx.S;
       var p = me.invested > 0, ms = Store.marketStatus();
-      var t = Store.totalsByType(me.id), pos = Store.positions(me.id), cap = Store.capInfo(me.id);
+      var t = Store.totalsByType(me.id), cap = Store.capInfo(me.id);
       var orders = Store.ordersOf(me.id);
       var compounding = orders.filter(function (o) { return o.option === 'Compounding'; }).reduce(function (s, o) { return s + o.amount; }, 0);
       var credited = Store.walletTxOf(me.id).filter(function (w) { return w.amount > 0; }).reduce(function (s, w) { return s + w.amount; }, 0);
@@ -36,12 +36,6 @@
             '<div class="m-chips"><span class="m-chip2">' + M.icon('user') + M.esc(me.code) + '</span>' +
             '<span class="m-chip2 gold">' + M.icon('package') + (p ? M.money(me.invested) + ' invested' : 'No package yet') + '</span>' +
             '<span class="m-chip2">' + M.icon('calendar') + 'Joined ' + M.date(me.joined) + '</span></div></div>' +
-            // leaderboard positions among all members (replaces the old rank card)
-            '<div class="m-pos"><small class="m-pos-h">' + M.icon('trophy') + 'My position · of ' + pos.of + ' members</small>' +
-              '<div class="m-pos-row">' +
-                '<div class="m-pos-i"><b>#' + pos.team.pos + '</b><span>Team size</span><small>' + pos.team.value + ' members</small></div>' +
-                '<div class="m-pos-i"><b>#' + pos.business.pos + '</b><span>Team business</span><small>' + M.money(pos.business.value) + '</small></div>' +
-              '</div></div></div>' +
           '<div class="m-ref"><label>Your referral link</label><div class="m-ref-row"><input readonly value="' + M.esc(link) + '" id="dRef">' +
             '<button class="mbtn gold" id="dCopy">' + M.icon('copy') + 'Copy</button>' +
             '<a class="mbtn glass" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent('Join my team on New Era Trading: ' + link) + '">' + M.icon('share') + 'WhatsApp</a>' +
