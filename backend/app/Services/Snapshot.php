@@ -237,7 +237,8 @@ class Snapshot
 
     public function admin(User $admin): array
     {
-        $users = User::orderBy('id')->get()->map(fn ($u) => array_merge(self::user($u, true), ['email' => $u->email]))->all();
+        // role=member only: another admin account (there is no admin-management UI) must never ride along in this response.
+        $users = User::where('role', 'member')->orderBy('id')->get()->map(fn ($u) => array_merge(self::user($u, true), ['email' => $u->email]))->all();
         return [
             'mode' => 'admin',
             'me' => ['id' => $admin->id, 'role' => 'admin', 'hasPin' => false],
