@@ -59,7 +59,7 @@
                 <div class="hint">Check your inbox (and spam folder). <a href="#" id="emailOtpResend">Resend code</a></div>
               </div>
             </div>
-            <div class="field"><label for="phone">Mobile number</label><input id="phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" required pattern="\d{10}" minlength="10" maxlength="10" placeholder="e.g. 9876543210"><div class="hint">Exactly 10 digits, no country code or symbols. One account per mobile number and per email.</div></div>
+            <div class="field"><label for="phone">Mobile number</label><input id="phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" required pattern="\d{10}" minlength="10" maxlength="10" placeholder="e.g. 9876543210" oninput="this.value=this.value.replace(/\D/g,'').slice(0,10)"><div class="hint">Exactly 10 digits, no country code or symbols. One account per mobile number and per email.</div></div>
           </div>
           <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" minlength="8" pattern="(?=.*[A-Za-z])(?=.*[0-9]).{8,}" title="At least 8 characters with letters and digits" autocomplete="new-password" required><div class="hint">At least 8 characters, with letters and digits.</div></div>
           <div class="field" id="amountField"><label for="amount">Joining amount (USD)</label><input id="amount" name="amount" type="number" min="5" step="5" placeholder="$5, $10, $15… (leave empty to activate later)">

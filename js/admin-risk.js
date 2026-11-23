@@ -207,7 +207,7 @@
     return '<div class="alert-card" style="border-left-color:var(--primary)">' +
       '<form id="acctForm" class="row" style="gap:.6rem;flex-wrap:wrap;align-items:end">' +
         '<div><label class="small muted">E-mail</label><br><input id="acctEmail" type="email" value="' + esc(u.email) + '" style="width:220px"></div>' +
-        '<div><label class="small muted">Phone</label><br><input id="acctPhone" type="text" value="' + esc(u.phone || '') + '" style="width:140px"></div>' +
+        '<div><label class="small muted">Phone</label><br><input id="acctPhone" type="text" inputmode="numeric" maxlength="10" value="' + esc(u.phone || '') + '" style="width:140px" oninput="this.value=this.value.replace(/\\D/g,\'\').slice(0,10)"></div>' +
         '<div><label class="small muted">Country</label><br><input id="acctCountry" type="text" value="' + esc(u.country || '') + '" style="width:110px"></div>' +
         '<div><label class="small muted">City</label><br><input id="acctCity" type="text" value="' + esc(u.city || '') + '" style="width:110px"></div>' +
         '<div><label class="small muted">Payout wallet (USDT)</label><br><input id="acctWallet" type="text" value="' + esc(u.usdtAddress || '') + '" style="width:220px;font-family:monospace"></div>' +

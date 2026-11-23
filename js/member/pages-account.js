@@ -12,7 +12,7 @@
           M.field('Username (Member ID)', '<input value="' + M.esc(me.code) + '" readonly>') +
           M.field('Full name', '<input name="name" required value="' + M.esc(me.name) + '">') +
           M.field('Email', '<input value="' + M.esc(me.email) + '" readonly>', 'Contact support to change your email.') +
-          M.field('Mobile', '<input name="phone" type="tel" value="' + M.esc(me.phone || '') + '">') +
+          M.field('Mobile', '<input name="phone" type="tel" inputmode="numeric" maxlength="10" value="' + M.esc(me.phone || '') + '" oninput="this.value=this.value.replace(/\\D/g,\'\').slice(0,10)">', 'Exactly 10 digits, no country code or symbols.') +
           M.field('Country', '<select name="country"><option value="">Select country</option>' + COUNTRIES.map(function (c) { return '<option' + (me.country === c ? ' selected' : '') + '>' + c + '</option>'; }).join('') + '</select>') +
           M.field('City', '<input name="city" value="' + M.esc(me.city || '') + '">') +
           '<div class="span2">' + M.field('USDT BEP20 (BSC) address', '<input name="usdt" value="' + M.esc(me.usdtAddress || '') + '" placeholder="0x…">', 'Used to prefill your withdrawals.') + '</div>' +
