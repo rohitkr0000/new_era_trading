@@ -97,7 +97,7 @@
           '<div class="m-seg"><label><input type="radio" name="src" value="purchase" checked><span>' + M.icon('wallet') + '<b>Purchase wallet</b><small>' + M.money(me.purchaseWallet || 0) + ' · Investment</small></span></label>' +
           '<label><input type="radio" name="src" value="income"><span>' + M.icon('coins') + '<b>Income wallet</b><small>' + M.money(me.wallet) + ' · Compounding</small></span></label></div>' +
           '<label class="m-lbl" style="display:block;font-weight:700;margin:.2rem 0 .4rem">Interest type</label>' +
-          '<div class="m-seg"><label><input type="radio" name="mode" value="simple" checked><span>' + M.icon('coins') + '<b>Simple interest</b><small>' + S.roiPct + '% paid to your income wallet every trading day</small></span></label>' +
+          '<div class="m-seg"><label><input type="radio" name="mode" value="simple"><span>' + M.icon('coins') + '<b>Simple interest</b><small>' + S.roiPct + '% paid to your income wallet every trading day</small></span></label>' +
           '<label><input type="radio" name="mode" value="compound"><span>' + M.icon('trend') + '<b>Compounding</b><small>' + S.roiPct + '% added to your balance daily — interest on interest</small></span></label></div>' +
           M.field('Package amount (USD)', '<input name="amount" type="number" min="' + S.minJoin + '" step="' + S.joinMultiple + '" required placeholder="' + S.currency + S.minJoin + ', ' + S.currency + (S.minJoin * 2) + ', ' + S.currency + (S.minJoin * 3) + '…">', 'Minimum ' + S.currency + S.minJoin + ', then in multiples of ' + S.currency + S.joinMultiple + ' (5, 10, 15, 20, 25…).') +
           '<div class="m-amts">' + quick.map(function (q) { return '<button type="button" class="mbtn line sm" data-amt="' + q + '">' + S.currency + q + '</button>'; }).join('') + '</div>' +
@@ -113,8 +113,9 @@
       var f = document.getElementById('buyForm'), sum = document.getElementById('buySum');
       function calc() {
         var a = Number(f.amount.value) || 0, cap = Store.isWorking(me.id) ? S.capWorking : S.capNonWorking;
-        var comp = f.mode.value === 'compound', x = window.Calc && a > 0 ? Calc.scenarios(a, S) : null;
-        sum.innerHTML = '<li><span>Type</span><b>' + (retopup ? 'Retopup' : 'Joining') + ' · ' + (comp ? 'Compounding' : 'Simple interest') + '</b></li>' +
+        var picked = f.mode.value, comp = picked === 'compound';
+        var x = window.Calc && a > 0 && picked ? Calc.scenarios(a, S) : null;
+        sum.innerHTML = '<li><span>Type</span><b>' + (retopup ? 'Retopup' : 'Joining') + ' · ' + (picked ? (comp ? 'Compounding' : 'Simple interest') : '— choose above —') + '</b></li>' +
           '<li><span>ROI per trading day (' + S.roiPct + '%)</span><b class="pos">+' + M.money(a * S.roiPct / 100) + (comp ? ' <small>(added to balance)</small>' : '') + '</b></li>' +
           (x ? (comp ? '<li><span>After ' + x.cycle + ' days (compounded)</span><b class="pos">' + M.money(x.ciFinal) + '</b></li><li><span>After the cycle expires</span><b>' + M.money(x.ciAfterExpiry) + '</b></li>'
             : '<li><span>Interest over ' + x.cycle + ' days</span><b class="pos">+' + M.money(x.siInterest) + '</b></li>') : '') +
@@ -127,6 +128,7 @@
       f.onsubmit = function (e) {
         e.preventDefault();
         var amount = Number(f.amount.value), src = f.src.value, mode = f.mode.value, al = document.getElementById('buyErr');
+        if (!mode) return M.alert(al, 'Choose an interest type: Simple interest or Compounding.');
         if (!amount || amount < S.minJoin) return M.alert(al, 'Minimum amount is ' + S.currency + S.minJoin + '.');
         if (Math.round(amount * 100) % Math.round(S.joinMultiple * 100) !== 0) return M.alert(al, 'Amount must be in multiples of ' + S.currency + S.joinMultiple + ' (5, 10, 15, 20…).');
         M.confirm('Confirm ' + (retopup ? 'retopup' : 'joining'), '<ul class="m-kv"><li><span>Amount</span><b>' + M.money(amount) + '</b></li>' +
