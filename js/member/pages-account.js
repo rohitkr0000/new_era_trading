@@ -181,25 +181,42 @@
           M.toast(has ? 'PIN changed' : 'PIN created'); ctx.refresh();
         });
       };
-      // forgot PIN: set the new PIN above, then prove it is you with an e-mailed code instead of the old PIN
+      // forgot PIN: an e-mailed code proves it's you, then you pick the new PIN right there in the same dialog
       var forgot = document.getElementById('pnForgot');
       if (forgot) forgot.onclick = function (e) {
         e.preventDefault();
         M.alert(al, '');
-        if (!newPinOk()) return;
-        var newPin = form.pin.value;
+        forgot.textContent = 'Sending…';
         Store.requestPinForgotOtp().then(function (r) {
+          forgot.textContent = 'Forgot PIN?';
           if (!r.ok) return M.alert(al, r.error);
-          M.askOtp({
-            sentTo: r.sentTo,
-            summary: 'We will set your transaction PIN to the new one you entered, using the code e-mailed to you instead of the old PIN.',
-            resend: function () { return Store.requestPinForgotOtp(); }
-          }).then(function (code) {
-            if (!code) return;
-            Store.resetPinWithOtp(newPin, code).then(function (r2) {
-              if (!r2.ok) return M.alert(al, r2.error);
-              M.toast('PIN reset'); ctx.refresh();
-            });
+          M.modal({
+            title: 'Reset your transaction PIN',
+            body: '<p class="m-muted" style="margin-top:0">A 6-digit code was sent to <b>' + M.esc(r.sentTo || 'your e-mail') + '</b> from New Era Trading. Check your inbox (and spam folder).</p>' +
+              '<div class="m-alert bad" hidden data-err></div>' +
+              M.field('Code from your e-mail', '<input name="rCode" class="m-pin sm" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="••••••">') +
+              M.field('New PIN', '<input name="rPin" class="m-pin sm" type="password" inputmode="numeric" maxlength="6">') +
+              M.field('Confirm new PIN', '<input name="rPin2" class="m-pin sm" type="password" inputmode="numeric" maxlength="6">') +
+              '<p class="m-muted" style="margin:.7rem 0 0;font-size:.82rem">The code works once and expires in 10 minutes. <a href="#" data-resend>Send a new code</a></p>',
+            footer: '<button class="mbtn line" data-close>Cancel</button><button class="mbtn gold" data-ok>' + M.icon('shield') + 'Reset PIN</button>',
+            onMount: function (el, close) {
+              var rCode = el.querySelector('[name=rCode]'), rPin = el.querySelector('[name=rPin]'), rPin2 = el.querySelector('[name=rPin2]'), err = el.querySelector('[data-err]');
+              setTimeout(function () { rCode.focus(); }, 60);
+              var go = function () {
+                if (!/^\d{6}$/.test(rCode.value)) { M.alert(err, 'Enter the 6-digit code from the e-mail.'); return; }
+                if (!/^\d{4,6}$/.test(rPin.value)) { M.alert(err, 'New PIN must be 4 to 6 digits.'); return; }
+                if (rPin.value !== rPin2.value) { M.alert(err, 'New PINs do not match.'); return; }
+                Store.resetPinWithOtp(rPin.value, rCode.value).then(function (r2) {
+                  if (!r2.ok) { M.alert(err, r2.error); return; }
+                  close(); M.toast('PIN reset'); ctx.refresh();
+                });
+              };
+              el.querySelector('[data-ok]').onclick = go;
+              el.querySelector('[data-resend]').onclick = function (ev) {
+                ev.preventDefault();
+                Store.requestPinForgotOtp().then(function (r3) { M.alert(err, r3.ok ? 'A new code was sent. Only the newest code works.' : r3.error, r3.ok ? 'ok' : 'bad'); });
+              };
+            }
           });
         });
       };
