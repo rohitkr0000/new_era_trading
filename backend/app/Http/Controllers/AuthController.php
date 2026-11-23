@@ -12,6 +12,7 @@ use App\Support\PlanException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rules\Password;
@@ -28,6 +29,46 @@ class AuthController extends Controller
     private function issueToken(User $user): string
     {
         return $user->createToken('web', ['*'], Carbon::now()->addMinutes($user->isAdmin() ? 120 : 1440))->plainTextToken;
+    }
+
+    private function regOtpKey(string $email): string { return 'reg-otp:' . strtolower(trim($email)); }
+    private function regVerifiedKey(string $email): string { return 'reg-verified:' . strtolower(trim($email)); }
+
+    /**
+     * Registration's own e-mail check, step 1: e-mail a code to an address that is not registered yet (no account
+     * exists to attach it to, so this uses a short-lived cache entry instead of the `otps` table).
+     */
+    public function registerEmailOtp(Request $request): JsonResponse
+    {
+        $d = $request->validate(['name' => 'nullable|string|max:120', 'email' => 'required|email|max:160']);
+        $email = strtolower(trim($d['email']));
+        if (User::where('email', $email)->exists()) throw new PlanException('This e-mail is already registered.');
+        $key = $this->regOtpKey($email);
+        $prev = Cache::get($key);
+        if ($prev && (Carbon::now()->timestamp - $prev['created']) < 60) throw new PlanException('Please wait a minute before requesting another code.');
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        Cache::put($key, ['hash' => Hash::make($code), 'attempts' => 0, 'created' => Carbon::now()->timestamp], now()->addMinutes(10));
+        Notifier::otpToEmail($email, trim((string) ($d['name'] ?? '')) ?: 'there', $code, 10);
+        return response()->json(['ok' => true, 'sentTo' => preg_replace('/(?<=.).(?=[^@]*@)/', '*', $email)]);
+    }
+
+    /** Step 2: a correct code marks the e-mail "proven" for the next 30 minutes, so /register can skip asking again. */
+    public function registerEmailVerify(Request $request): JsonResponse
+    {
+        $d = $request->validate(['email' => 'required|email|max:160', 'otp' => 'required|string']);
+        $email = strtolower(trim($d['email']));
+        $key = $this->regOtpKey($email);
+        $row = Cache::get($key);
+        if (! $row) throw new PlanException('Request a verification code first.');
+        if (($row['attempts'] ?? 0) >= 5) { Cache::forget($key); throw new PlanException('Too many wrong attempts. Request a new code.'); }
+        if (! preg_match('/^\d{6}$/', trim($d['otp'])) || ! Hash::check(trim($d['otp']), $row['hash'])) {
+            $row['attempts'] = ($row['attempts'] ?? 0) + 1;
+            Cache::put($key, $row, now()->addMinutes(10));
+            throw new PlanException('Incorrect verification code.');
+        }
+        Cache::forget($key);
+        Cache::put($this->regVerifiedKey($email), true, now()->addMinutes(30));
+        return response()->json(['ok' => true]);
     }
 
     public function register(Request $request, PlanEngine $plan, OtpService $otp): JsonResponse
@@ -54,7 +95,13 @@ class AuthController extends Controller
         $user = $plan->register($d);
         Audit::log('auth.register', $user, 'user#' . $user->id, ['sponsor' => $d['sponsorCode']]);
         Notifier::welcome($user);   // registration message (e-mail from New Era Trading)
-        try { $otp->send($user, 'verify', 'e-mail verification'); } catch (PlanException $e) { /* just created: cannot be throttled */ }
+        if (Cache::pull($this->regVerifiedKey($user->email))) {
+            // the member already proved this e-mail during sign-up (step 1's "Verify" button) — no need to ask again
+            $user->forceFill(['email_verified_at' => Carbon::now()])->save();
+            Audit::log('auth.email-verified', $user, null, ['via' => 'registration']);
+        } else {
+            try { $otp->send($user, 'verify', 'e-mail verification'); } catch (PlanException $e) { /* just created: cannot be throttled */ }
+        }
         return response()->json(['token' => $this->issueToken($user), 'user' => Snapshot::user($user, true)], 201);
     }
 

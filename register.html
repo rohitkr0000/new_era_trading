@@ -44,7 +44,21 @@
 
           <div class="field"><label for="name">Full name</label><input id="name" name="name" autocomplete="name" required></div>
           <div class="grid grid-2" style="gap:.8rem">
-            <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" required></div>
+            <div class="field"><label for="email">Email</label>
+              <div style="display:flex;gap:.4rem">
+                <input id="email" name="email" type="email" autocomplete="email" required style="flex:1">
+                <button type="button" class="btn btn-outline" id="emailVerifyBtn" style="white-space:nowrap;padding-inline:.9rem">Verify</button>
+              </div>
+              <div class="hint" id="emailHint" hidden></div>
+              <div class="field" id="emailOtpRow" hidden style="margin:.5rem 0 0">
+                <label for="emailOtp" style="font-size:.85rem">Code from your e-mail</label>
+                <div style="display:flex;gap:.4rem">
+                  <input id="emailOtp" inputmode="numeric" maxlength="6" placeholder="6-digit code" style="flex:1">
+                  <button type="button" class="btn btn-outline" id="emailOtpConfirm" style="white-space:nowrap">Confirm</button>
+                </div>
+                <div class="hint">Check your inbox (and spam folder). <a href="#" id="emailOtpResend">Resend code</a></div>
+              </div>
+            </div>
             <div class="field"><label for="phone">Mobile number</label><input id="phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" required pattern="\d{10}" minlength="10" maxlength="10" placeholder="e.g. 9876543210"><div class="hint">Exactly 10 digits, no country code or symbols. One account per mobile number and per email.</div></div>
           </div>
           <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" minlength="8" pattern="(?=.*[A-Za-z])(?=.*[0-9]).{8,}" title="At least 8 characters with letters and digits" autocomplete="new-password" required><div class="hint">At least 8 characters, with letters and digits.</div></div>
@@ -118,6 +132,55 @@
     }
     form.sponsorCode.addEventListener('input', checkSponsor);
     checkSponsor();
+
+    // e-mail verification (optional, before the account exists): verify now and the post-signup verify step is skipped
+    var emailVerified = false, emailVerifiedFor = '';
+    var verifyBtn = document.getElementById('emailVerifyBtn'), emailHint = document.getElementById('emailHint');
+    var otpRow = document.getElementById('emailOtpRow'), otpInput = document.getElementById('emailOtp'),
+      otpConfirmBtn = document.getElementById('emailOtpConfirm'), otpResend = document.getElementById('emailOtpResend');
+    function resetEmailVerified() {
+      emailVerified = false; emailVerifiedFor = '';
+      emailHint.hidden = true; verifyBtn.textContent = 'Verify'; verifyBtn.disabled = false;
+    }
+    form.email.addEventListener('input', function () {
+      otpRow.hidden = true;
+      if (emailVerifiedFor && form.email.value.trim().toLowerCase() !== emailVerifiedFor) resetEmailVerified();
+    });
+    verifyBtn.onclick = function () {
+      err.hidden = true;
+      if (!form.email.checkValidity()) { form.email.reportValidity(); return; }
+      var email = form.email.value.trim();
+      verifyBtn.disabled = true; verifyBtn.textContent = 'Sending…';
+      Store.requestRegisterEmailOtp(form.name.value, email).then(function (r) {
+        verifyBtn.disabled = false; verifyBtn.textContent = 'Verify';
+        if (!r.ok) { err.textContent = r.error; err.hidden = false; window.scrollTo(0, 0); return; }
+        otpRow.hidden = false; otpInput.value = ''; otpInput.focus();
+      });
+    };
+    otpConfirmBtn.onclick = function () {
+      err.hidden = true;
+      var code = otpInput.value.trim(), email = form.email.value.trim();
+      if (!/^\d{6}$/.test(code)) { err.textContent = 'Enter the 6-digit code from the e-mail.'; err.hidden = false; return; }
+      otpConfirmBtn.disabled = true;
+      Store.verifyRegisterEmailOtp(email, code).then(function (r) {
+        otpConfirmBtn.disabled = false;
+        if (!r.ok) { err.textContent = r.error; err.hidden = false; return; }
+        emailVerified = true; emailVerifiedFor = email.toLowerCase();
+        otpRow.hidden = true;
+        emailHint.hidden = false; emailHint.textContent = '✓ E-mail verified'; emailHint.style.color = '#059669';
+        verifyBtn.textContent = '✓ Verified'; verifyBtn.disabled = true;
+      });
+    };
+    otpResend.onclick = function (e) {
+      e.preventDefault();
+      err.hidden = true;
+      var email = form.email.value.trim();
+      if (!email) return;
+      Store.requestRegisterEmailOtp(form.name.value, email).then(function (r) {
+        if (!r.ok) { err.textContent = r.error; err.hidden = false; return; }
+        otpInput.value = ''; otpInput.focus();
+      });
+    };
 
     // two steps: account details, then a required Transaction PIN. Step 2's fields are only "required" once shown,
     // so reportValidity() on step 1 never blocks on them.

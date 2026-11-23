@@ -17,6 +17,8 @@ Route::get('/public', [PublicController::class, 'summary'])->middleware('throttl
 Route::get('/public/deposit-qr', [PublicController::class, 'depositQr'])->middleware('throttle:public');
 Route::get('/public/sponsor/{code}', [PublicController::class, 'sponsor'])->middleware('throttle:sponsor');
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:register');
+Route::post('/register/email-otp', [AuthController::class, 'registerEmailOtp'])->middleware('throttle:otp-request');
+Route::post('/register/email-verify', [AuthController::class, 'registerEmailVerify'])->middleware('throttle:otp-confirm');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 Route::post('/login/verify', [AuthController::class, 'loginVerify'])->middleware('throttle:login');
 Route::post('/password/forgot', [AuthController::class, 'forgotPassword'])->middleware('throttle:forgot');

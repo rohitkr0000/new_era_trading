@@ -17,15 +17,27 @@ class Notifier
 {
     private static function send(User $to, string $subject, string $template, array $data = []): void
     {
-        $deliver = function () use ($to, $subject, $template, $data) {
+        self::sendTo($to->email, $to->name, $subject, $template, $data);
+    }
+
+    /** Same as send(), but for an address with no User row yet (registration's own e-mail verification step). */
+    private static function sendTo(string $email, string $name, string $subject, string $template, array $data = []): void
+    {
+        $deliver = function () use ($email, $name, $subject, $template, $data) {
             try {
-                Mail::to($to->email, $to->name)->send(new BrandedMail($subject, $template, $data + ['name' => $to->name]));
+                Mail::to($email, $name)->send(new BrandedMail($subject, $template, $data + ['name' => $name]));
             } catch (\Throwable $e) {
                 report($e);
             }
         };
         // web request: send after the response has gone out (the member never waits for SMTP); console / tests: send now
         app()->runningInConsole() ? $deliver() : defer($deliver);
+    }
+
+    /** OTP sent to an e-mail address before any account exists (registration's own e-mail verification step). */
+    public static function otpToEmail(string $email, string $name, string $code, int $minutes): void
+    {
+        self::sendTo($email, $name, $code . ' is your New Era Trading verification code', 'otp', ['code' => $code, 'purpose' => 'e-mail verification', 'minutes' => $minutes]);
     }
 
     private static function when($ts): string

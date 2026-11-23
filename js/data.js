@@ -243,6 +243,9 @@
       return boot().then(function () { return { ok: true, user: r.user }; });
     });
   }
+  // registration's own e-mail check (before any account exists): request a code, then verify it
+  function requestRegisterEmailOtp(name, email) { return req('POST', '/register/email-otp', { name: name || null, email: email }); }
+  function verifyRegisterEmailOtp(email, otp) { return req('POST', '/register/email-verify', { email: email, otp: otp }); }
   function register(d) {
     return req('POST', '/register', {
       name: d.name, email: d.email, password: d.password, phone: d.phone || null, pin: d.pin || null, sponsorCode: d.sponsorCode,
@@ -290,6 +293,7 @@
 
     // auth
     login: login, loginVerify: loginVerify, register: register, logout: logout,
+    requestRegisterEmailOtp: requestRegisterEmailOtp, verifyRegisterEmailOtp: verifyRegisterEmailOtp,
     lookupSponsor: function (code) { return req('GET', '/public/sponsor/' + encodeURIComponent(String(code || '').trim())); },
     // member
     purchasePackage: function (userId, amount, source, pin, mode) { return write('POST', '/member/purchase', { amount: Number(amount), source: source, pin: pin, mode: mode || 'simple' }); },
