@@ -235,6 +235,17 @@ try {
     $plan->accrue();
     eq('running accrue again credits nothing (idempotent)', DB::table('ledger')->count() - $before, 0);
 
+    section('ROI lands at the same midnight for everyone, whatever time of day they bought');
+    at('2026-11-24 00:35:00');                          // Tue 06:05 IST
+    $early = $mk('early', null, 100);
+    at('2026-11-24 18:00:00');                          // Tue 23:30 IST — same IST calendar day, 17+ hours later
+    $late = $mk('late', null, 100);
+    at('2026-11-25 01:00:00');                          // Wed 06:30 IST — the midnight both are waiting for has now passed
+    $plan->accrue();
+    $roiAt = fn (int $uid) => DB::table('ledger')->where('user_id', $uid)->where('type', 'roi')->value('created_at');
+    eq('both bought the same IST day → both get exactly 1 ROI credit', DB::table('ledger')->where('user_id', $early->id)->where('type', 'roi')->count() . '/' . DB::table('ledger')->where('user_id', $late->id)->where('type', 'roi')->count(), '1/1');
+    eq('credited at the identical instant (next midnight IST), not 24h after each purchase', $roiAt($early->id), $roiAt($late->id));
+
     section('Withdrawals — $5 multiples, Mon–Fri 10 AM–2 PM IST, 24h receipt');
     $m = $N->fresh();
     at('2026-11-14 06:30:00');   throws('Saturday is blocked', fn () => $wallet->requestWithdrawal($m, 10, 'USDT', '0xabc'), 'Weekend');

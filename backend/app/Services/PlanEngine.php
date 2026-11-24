@@ -310,34 +310,40 @@ class PlanEngine
     /* ------------------------------------------------------------------ daily ROI */
 
     /**
-     * Credits every ROI day that is due (24h steps since purchase; only trading days pay), back-dated to the day it was earned.
+     * Credits every ROI calendar day that is due (only trading days pay), back-dated to the day it was earned.
+     * Every member is credited at the same wall-clock moment (just after midnight, company timezone) regardless
+     * of what time of day they bought — a package bought at 11 PM and one bought at 1 AM both earn their first
+     * day at the next midnight, same as CompoundService's compounding packages.
      * Level income is NOT paid on ROI — it is paid on investments (see invest()). Idempotent — safe to run as often as you like.
      */
     public function accrue(): int
     {
         $s = Settings::all();
+        $tz = $s['timezone'];
         $now = Carbon::now();
+        $today = $now->copy()->setTimezone($tz)->startOfDay();
         $credits = 0;
 
         // simple-interest packages only; compounding packages are run by CompoundService below
         foreach (DB::table('orders')->where('status', 'running')->where('option', '!=', 'Compounding')->orderBy('id')->pluck('id') as $orderId) {
-            DB::transaction(function () use ($orderId, $now, $s, &$credits) {
+            DB::transaction(function () use ($orderId, $tz, $today, &$credits) {
                 $o = DB::table('orders')->where('id', $orderId)->lockForUpdate()->first();
-                $created = Carbon::parse($o->created_at);
-                $due = intdiv($now->getTimestamp() - $created->getTimestamp(), 86400);
-                if ($due <= $o->steps) return;
+                $purchaseDay = Carbon::parse($o->created_at)->setTimezone($tz)->startOfDay();
+                $day = $purchaseDay->copy()->addDays($o->steps);   // last calendar day already processed
+                if (! $day->lt($today)) return;
 
                 $steps = $o->steps;
                 $paid = $o->paid_days;
-                while ($steps < $due) {
+                while ($day->lt($today)) {
+                    $day = $day->copy()->addDay();
                     $steps++;
-                    $when = $created->copy()->addSeconds($steps * 86400);
-                    if (! Market::isTradingDay($when)) continue;         // weekend: trading off
+                    if (! Market::isTradingDay($day->copy()->setTime(12, 0))) continue;   // weekend: trading off, the day does not age into a paid day
                     if ($o->days && $paid >= $o->days) break;
                     $paid++;
                     $u = User::find($o->user_id);
                     if (! $this->isActive($u)) continue;
 
+                    $when = $day->copy()->setTime(0, 1)->setTimezone('UTC');   // just after midnight, company timezone — same instant for everyone
                     $roi = $this->credit($u->id, 'roi', Money::pct($o->amount, $o->pct), 'ROI ' . (float) $o->pct . '% on ' . $o->ref . ' · trading day ' . $paid, null, $when, $o->id);
                     if (Money::pos($roi)) $credits++;
                 }
