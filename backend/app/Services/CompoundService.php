@@ -26,8 +26,8 @@ use Illuminate\Support\Facades\DB;
  * Saturday and Sunday are not trading days: no interest, and the lots do not age.
  *
  * Compounded interest is a balance on paper. It is not realised income until it is paid out — in cash mode daily,
- * or via withdrawOrder() — so only paid-out interest is trimmed to the earning cap; the principal portion of a
- * withdrawal is a refund of the member's own money, never capped.
+ * or via withdrawOrder() — so only paid-out interest is trimmed to the earning cap. withdrawOrder() never pays
+ * out the principal itself: only the growth above the original purchase amount is credited (as capped "roi").
  *
  * The job is idempotent (compound_ledger is unique per user and day) and catches up on days a stopped server missed.
  */
@@ -169,9 +169,10 @@ class CompoundService
     }
 
     /**
-     * Member-initiated: cash out one compounding order's current value — early (while it is still running, at
-     * whatever it has grown to so far) or its frozen total (once matured). Either way the order closes. The
-     * original principal is refunded in full (never capped); any growth beyond it is "roi" income (capped).
+     * Member-initiated: cash out one compounding order's growth — early (while it is still running, at whatever
+     * it has grown to so far) or its frozen total (once matured). Either way the order closes. The original
+     * principal is NEVER paid out to the member (it is forfeited); only the growth above it is "roi" income
+     * (capped). Withdrawing before any growth has accrued is refused — it would forfeit the principal for $0.
      */
     public function withdrawOrder(int $userId, int $orderId): array
     {
@@ -186,17 +187,16 @@ class CompoundService
                 $value = Money::r(DB::table('compound_lots')->where('order_id', $orderId)->where('days_left', '>', 0)->sum('amount'));
                 DB::table('compound_lots')->where('order_id', $orderId)->where('days_left', '>', 0)->update(['days_left' => 0]);
             }
-            if (! Money::pos($value)) throw new PlanException('Nothing to withdraw on this package yet.');
+
+            $growth = Money::cmp($value, $o->amount) > 0 ? Money::sub($value, $o->amount) : '0.00';
+            if (! Money::pos($growth)) throw new PlanException('Nothing to withdraw yet — only the growth above your original ' . Money::r($o->amount) . ' investment can be withdrawn; the principal itself is not paid out.');
 
             DB::table('orders')->where('id', $orderId)->update(['status' => 'closed', 'matured_balance' => null]);
 
-            $principal = Money::cmp($value, $o->amount) > 0 ? $o->amount : $value;
-            $growth = Money::cmp($value, $o->amount) > 0 ? Money::sub($value, $o->amount) : '0.00';
-            $refunded = Money::pos($principal) ? $this->plan->credit($userId, 'refund', $principal, 'Compounding principal returned · ' . $o->ref, null, null, $orderId) : '0.00';
-            $credited = Money::pos($growth) ? $this->plan->credit($userId, 'roi', $growth, 'Compounding growth withdrawn · ' . $o->ref, null, null, $orderId) : '0.00';
+            $credited = $this->plan->credit($userId, 'roi', $growth, 'Compounding growth withdrawn · ' . $o->ref, null, null, $orderId);
 
             Snapshot::forget($userId);
-            return ['orderId' => $orderId, 'value' => $value, 'principalReturned' => $refunded, 'growthCredited' => $credited];
+            return ['orderId' => $orderId, 'value' => $value, 'growthCredited' => $credited];
         });
     }
 

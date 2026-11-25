@@ -414,13 +414,13 @@ try {
     check('member B keeps compounding: ~$338.64 x 1.05^25 matures near $1146.8', $orderB2->status === 'matured' && abs((float) $orderB2->matured_balance - 1146.8) <= 8, json_encode($orderB2));
     eq('member B has still earned no cash', Money::r(User::find($CB->id)->wallet), '0.00');
 
-    // member C: $10 package also matured (~$33.86); withdrawing it shows the cap only trims the GROWTH, never the principal
+    // member C: $10 package also matured (~$33.86); withdrawing it never pays the $10 principal — only growth, capped
     $orderC = DB::table('orders')->where('user_id', $CC->id)->where('option', 'Compounding')->first();
     check('member C: $10 compounded 25 days -> ~$33.86 (10 x 1.05^25)', $orderC->status === 'matured' && abs((float) $orderC->matured_balance - 33.86) <= 0.3, json_encode($orderC));
     $wdC = $comp->withdrawOrder($CC->id, $orderC->id);
     check('growth beyond the $10 principal (~$23.86) is trimmed to the 2X cap ($20)', abs($wdC['growthCredited'] - 20.0) < 0.01, json_encode($wdC));
-    eq('the $10 principal is refunded in full, never capped', $wdC['principalReturned'], '10.00');
-    eq('wallet = principal + capped growth = $30.00', Money::r(User::find($CC->id)->fresh()->wallet), '30.00');
+    eq('no "principalReturned" key — the principal is never paid out', array_key_exists('principalReturned', $wdC), false);
+    eq('wallet = capped growth only = $20.00 — the $10 principal was NOT paid out', Money::r(User::find($CC->id)->fresh()->wallet), '20.00');
     eq('income (capped) total sits exactly at the $20 cap', $plan->incomeTotal($CC->id), '20.00');
     eq('the order is closed after withdrawal', DB::table('orders')->where('id', $orderC->id)->value('status'), 'closed');
     throws('withdrawing an already-closed package is refused', fn () => $comp->withdrawOrder($CC->id, $orderC->id), 'already been withdrawn');
@@ -430,13 +430,16 @@ try {
     at($earlyMon->format('Y-m-d') . ' 06:30:00');
     $CE = $mk('cmpe', null, null);
     $plan->invest($CE->id, 100, 'Compounding');
+    $orderE0 = DB::table('orders')->where('user_id', $CE->id)->where('option', 'Compounding')->first();
+    throws('withdrawing before any growth has accrued is refused (it would forfeit the $100 principal for $0)', fn () => $comp->withdrawOrder($CE->id, $orderE0->id), 'the principal itself is not paid out');
     at($earlyMon->copy()->addDay()->format('Y-m-d') . ' 06:30:00');   // Tuesday = day 1: $100 -> $105
     $comp->accrue();
     $orderE = DB::table('orders')->where('user_id', $CE->id)->where('option', 'Compounding')->first();
     check('still running after just 1 day', $orderE->status === 'running', $orderE->status);
     $wdE = $comp->withdrawOrder($CE->id, $orderE->id);
-    check('early withdrawal pays the value reached so far (~$105), forfeiting the rest of the cycle', abs($wdE['value'] - 105.0) < 0.01, json_encode($wdE));
-    eq('$100 principal refunded + $5 growth credited as roi', $wdE['principalReturned'] . '/' . $wdE['growthCredited'], '100.00/5.00');
+    check('early withdrawal reports the value reached so far (~$105), forfeiting the rest of the cycle', abs($wdE['value'] - 105.0) < 0.01, json_encode($wdE));
+    eq('only the $5 growth is credited as roi — the $100 principal is not paid out', $wdE['growthCredited'], '5.00');
+    eq('wallet = $5.00 only', Money::r(User::find($CE->id)->fresh()->wallet), '5.00');
     eq('the order closes immediately', DB::table('orders')->where('id', $orderE->id)->value('status'), 'closed');
     throws('a package cannot be re-compounded unless it has matured', fn () => $comp->recompound($CE->id, $orderE->id), 'not ready to re-compound');
 

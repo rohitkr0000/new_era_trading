@@ -164,8 +164,8 @@
         M.card('Your compounding packages', packages.length ? '<ul class="m-kv" id="cmPkgs">' + packages.map(function (p) {
           var st = STAT[p.status] || ['—', 'muted'];
           var actions = '';
-          if (p.status === 'running') actions = '<button class="mbtn line sm" data-wd="' + p.orderId + '">' + M.icon('coins') + 'Withdraw now</button>';
-          else if (p.status === 'matured') actions = '<button class="mbtn gold sm" data-wd="' + p.orderId + '">' + M.icon('coins') + 'Withdraw</button>' +
+          if (p.status === 'running' && p.value > p.amount) actions = '<button class="mbtn line sm" data-wd="' + p.orderId + '">' + M.icon('coins') + 'Withdraw now</button>';
+          else if (p.status === 'matured') actions = (p.value > p.amount ? '<button class="mbtn gold sm" data-wd="' + p.orderId + '">' + M.icon('coins') + 'Withdraw</button>' : '') +
             '<button class="mbtn line sm" data-rc="' + p.orderId + '">' + M.icon('trend') + 'Re-compound</button>';
           return '<li style="flex-wrap:wrap"><span><code>' + M.esc(p.ref) + '</code> <small class="m-muted">bought ' + M.date(p.date) + ' · ' + p.paidDays + '/' + p.days + ' days · ' + M.badge(st[0], st[1]) + '</small></span>' +
             '<b>' + M.money(p.value) + '</b>' + (actions ? '<div style="flex:0 0 100%;margin-top:.4rem;display:flex;gap:.4rem">' + actions + '</div>' : '') + '</li>';
@@ -194,14 +194,15 @@
         b.onclick = function () {
           var orderId = b.dataset.wd, pkg = packages.filter(function (p) { return String(p.orderId) === orderId; })[0];
           var early = pkg && pkg.status === 'running';
-          M.confirm('Withdraw this package', '<p>You will receive <b>' + M.money(pkg ? pkg.value : 0) + '</b> in your income wallet' +
-            (early ? ' right now — this package stops compounding, so it will not earn the rest of its 25-day cycle.' : '.') + '</p>', 'Withdraw').then(function (ok) {
+          var growth = pkg ? Math.max(0, pkg.value - pkg.amount) : 0;
+          M.confirm('Withdraw this package', '<p>You will receive <b>' + M.money(growth) + '</b> in your income wallet — the growth above your original ' + M.money(pkg ? pkg.amount : 0) + ' investment; the principal itself is not paid out' +
+            (early ? ', and the package stops compounding, so it will not earn the rest of its 25-day cycle.' : '.') + '</p>', 'Withdraw').then(function (ok) {
             return ok ? M.askPin(ctx.me.id) : null;
           }).then(function (pin) {
             if (!pin) return null;
             return Store.withdrawCompoundOrder(orderId, pin).then(function (r) {
               if (!r.ok) return M.toast(r.error, 'err');
-              M.toast('Withdrawn ' + M.money(r.value) + ' to your income wallet');
+              M.toast('Withdrawn ' + M.money(r.growthCredited) + ' to your income wallet');
               ctx.refresh();
             });
           });
