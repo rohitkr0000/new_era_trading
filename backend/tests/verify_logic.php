@@ -189,6 +189,29 @@ try {
     eq('100 direct members × $5 → level-1 income $10.00 (2% of $500)', sumType($Z->id, 'level'), '10.00');
     eq('…and direct income 5% of $500 = $25.00', sumType($Z->id, 'direct'), '25.00');
 
+    section('Referral income is forfeited (not lost) when the sponsor/upline is not active');
+    at($MON);
+    $IS = $mk('inact', null);                               // never buys a package — stays inactive
+    eq('a freshly registered member with no amount is inactive', $IS->invested, '0.00');
+    $RM = $mk('refd', $IS, 50);                             // joins under the inactive sponsor
+    eq('the inactive sponsor earns NO direct income', sumType($IS->id, 'direct'), '0.00');
+    eq('…nor level-1 income (same person, same reason)', sumType($IS->id, 'level'), '0.00');
+    $forfeits = DB::table('deductions')->where('user_id', $IS->id)->where('type', 'referral_forfeit')->where('status', 'Deducted')->get();
+    eq('two forfeited rows are logged instead of vanishing: direct ($2.50) + level 1 ($1.00)', $forfeits->count(), 2);
+    check('the direct-income forfeit is exactly 5% of $50 = $2.50', $forfeits->contains(fn ($d) => Money::r($d->amount) === '2.50' && str_contains($d->note, 'Direct Referral')), json_encode($forfeits));
+    check('the level-1 forfeit is exactly 2% of $50 = $1.00', $forfeits->contains(fn ($d) => Money::r($d->amount) === '1.00' && str_contains($d->note, 'Level 1')), json_encode($forfeits));
+    eq('nothing was actually deducted from anyone\'s balance — this is unpaid income, not a charge', DB::table('deductions')->where('user_id', $IS->id)->where('type', 'referral_forfeit')->sum('amount'), '3.50');
+
+    $plan->invest($RM->id, 20);                             // a retopup, sponsor still inactive
+    eq('retopup income is forfeited too, not just the first joining', sumType($IS->id, 'retopup'), '0.00');
+    eq('retopup forfeit is 5% of $20 = $1.00', DB::table('deductions')->where('user_id', $IS->id)->where('type', 'referral_forfeit')->where('note', 'like', 'Retopup%')->value('amount'), '1.00');
+    eq('…plus another level-1 forfeit on the retopup (2% of $20 = $0.40): running total $4.90', DB::table('deductions')->where('user_id', $IS->id)->where('type', 'referral_forfeit')->sum('amount'), '4.90');
+
+    $plan->invest($IS->id, 30);                             // the sponsor finally buys a package — becomes active
+    $RM2 = $mk('refd2', $IS, 40);
+    eq('once active, the same sponsor earns direct income normally on a NEW referral', sumType($IS->id, 'direct'), '2.00');
+    eq('…and the earlier forfeits are untouched (they are history, not retroactively paid)', DB::table('deductions')->where('user_id', $IS->id)->where('type', 'referral_forfeit')->count(), 4);
+
     section('12-level income — unlocked level by level (level k needs k active directs)');
     at($MON);
     // P has 3 directs; X1 has a chain below it: P → X1 (L1) → Y2 (L2) → Y3 (L3) → Y4 (L4) → Y5 (L5)

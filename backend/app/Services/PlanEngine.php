@@ -43,6 +43,17 @@ class PlanEngine
         return User::where('sponsor_id', $userId)->where('role', 'member')->where('blocked', false)->where('invested', '>', 0)->count();
     }
 
+    /**
+     * Direct/retopup/level income that would go to a sponsor or upline who isn't active (no package bought yet,
+     * or blocked) is never credited to anyone — this logs it as a deduction instead, so it shows up as money the
+     * company kept rather than silently vanishing. $inactiveUserId is who would have earned it.
+     */
+    private function recordForfeit(int $inactiveUserId, string $amount, string $note): void
+    {
+        if (! Money::pos($amount)) return;
+        DB::table('deductions')->insert(['user_id' => $inactiveUserId, 'withdrawal_id' => null, 'type' => 'referral_forfeit', 'note' => $note, 'amount' => $amount, 'status' => 'Deducted', 'created_at' => Carbon::now()]);
+    }
+
     /** Level-1 business: what the member's active direct referrals have invested in total. */
     public function directBusiness(int $userId): string
     {
@@ -249,11 +260,14 @@ class PlanEngine
 
             if ($u->sponsor_id) {
                 $sp = User::find($u->sponsor_id);
+                $label = ' #' . $u->code . ' (' . $s['currency'] . $amount . ')';
                 if ($this->isActive($sp)) {
-                    $label = ' #' . $u->code . ' (' . $s['currency'] . $amount . ')';
                     $retopup
                         ? $this->credit($sp->id, 'retopup', Money::pct($amount, $s['retopupPct']), 'Retopup Income' . $label, $u->id)
                         : $this->credit($sp->id, 'direct', Money::pct($amount, $s['directPct']), 'Direct Referral Income' . $label, $u->id);
+                } elseif ($sp) {
+                    $this->recordForfeit($sp->id, Money::pct($amount, $retopup ? $s['retopupPct'] : $s['directPct']),
+                        ($retopup ? 'Retopup' : 'Direct Referral') . ' Income forfeited — sponsor #' . $sp->code . ' is not active (no package bought yet, or blocked)' . $label);
                 }
             }
 
@@ -264,7 +278,12 @@ class PlanEngine
                 if (! $cur->sponsor_id) break;
                 $cur = User::find($cur->sponsor_id);
                 $lvl = $i + 1;
-                if ($pct <= 0 || ! $this->isActive($cur)) continue;
+                if ($pct <= 0) continue;
+                if (! $this->isActive($cur)) {
+                    $this->recordForfeit($cur->id, Money::pct($amount, $pct),
+                        'Level ' . $lvl . ' income forfeited — #' . $cur->code . ' is not active (no package bought yet, or blocked) #' . $u->code . ' (' . $s['currency'] . $amount . ')');
+                    continue;
+                }
                 if ($s['levelUnlockPerLevel'] && $this->activeDirects($cur->id) < $lvl) continue;
                 $this->credit($cur->id, 'level', Money::pct($amount, $pct), 'Level ' . $lvl . ' income #' . $u->code . ' (' . $s['currency'] . $amount . ')', $u->id, null, $orderId);
             }

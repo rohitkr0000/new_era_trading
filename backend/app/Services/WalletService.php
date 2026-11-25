@@ -148,7 +148,7 @@ class WalletService
             $now = Carbon::now();
             DB::table('transfers')->insert(['kind' => 'member', 'from_id' => $from->id, 'to_id' => $dest->id, 'amount' => $amount, 'fee' => $fee, 'net' => $net, 'created_at' => $now]);
             if (Money::pos($fee)) {
-                DB::table('deductions')->insert(['user_id' => $from->id, 'withdrawal_id' => null, 'note' => 'P2P charge @ ' . (float) ($s['p2pFeePct'] ?? 0) . ' % on ' . $s['currency'] . $amount . ' to ' . $dest->code . ' (' . $source . ' wallet)', 'amount' => $fee, 'status' => 'Deducted', 'created_at' => $now]);
+                DB::table('deductions')->insert(['user_id' => $from->id, 'withdrawal_id' => null, 'type' => 'p2p_fee', 'note' => 'P2P charge @ ' . (float) ($s['p2pFeePct'] ?? 0) . ' % on ' . $s['currency'] . $amount . ' to ' . $dest->code . ' (' . $source . ' wallet)', 'amount' => $fee, 'status' => 'Deducted', 'created_at' => $now]);
             }
             return $dest;
         });
@@ -192,7 +192,7 @@ class WalletService
             ]);
             DB::table('withdrawals')->where('id', $wid)->update(['ref' => 'WD-' . (1000 + $wid)]);
             if (Money::pos($fee)) {
-                DB::table('deductions')->insert(['user_id' => $u->id, 'withdrawal_id' => $wid, 'note' => 'Service Charge @ ' . $s['withdrawFeePct'] . ' % on ' . $s['currency'] . $amount, 'amount' => $fee, 'status' => 'Deducted', 'created_at' => $now]);
+                DB::table('deductions')->insert(['user_id' => $u->id, 'withdrawal_id' => $wid, 'type' => 'withdrawal_fee', 'note' => 'Service Charge @ ' . $s['withdrawFeePct'] . ' % on ' . $s['currency'] . $amount, 'amount' => $fee, 'status' => 'Deducted', 'created_at' => $now]);
             }
             return $wid;
         });

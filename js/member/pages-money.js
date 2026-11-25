@@ -200,7 +200,7 @@
     render: function (el, ctx) {
       el.innerHTML = M.card('Service charges', '<div id="ddT"></div>', { icon: 'percent', sub: 'Fees deducted from payouts. Fees on rejected payouts are reversed.' });
       M.table(document.getElementById('ddT'), {
-        rows: Store.deductionsOf(ctx.me.id), dateKey: 'date', sumKey: 'amount', sumLabel: 'Total deducted', exportName: 'deductions', empty: 'No deductions yet.',
+        rows: Store.deductionsOf(ctx.me.id).filter(function (d) { return d.type !== 'referral_forfeit'; }), dateKey: 'date', sumKey: 'amount', sumLabel: 'Total deducted', exportName: 'deductions', empty: 'No deductions yet.',
         columns: [
           { key: 'date', label: 'Date', render: function (r) { return M.dt(r.date); }, csv: function (r) { return M.dt(r.date); } },
           { key: 'note', label: 'Transaction description' },
