@@ -152,11 +152,11 @@
       el.innerHTML = '<div class="m-split wide-l">' +
         M.card('Compounding balance',
           '<div class="m-big-bal"><small>Live balance earning ' + S.roiPct + '% per trading day</small><b>' + M.money(C.balance) + '</b></div>' +
-          (has ? '<div class="m-alert ok" style="display:block">Mode: <b>' + (mode === 'compound' ? 'keep compounding' : 'withdraw the daily interest') + '</b> — ' +
-              (mode === 'compound' ? 'each day ' + S.roiPct + '% of the balance is added to it.' : 'each day ' + S.roiPct + '% of the balance is paid to your income wallet.') + '</div>' +
+          (has ? '<div class="m-alert ok" style="display:block">Today\'s income on this balance: <b>+' + M.money(C.balance * S.roiPct / 100) + '</b> — mode: <b>' + (mode === 'compound' ? 'keep compounding' : 'transfer to income wallet') + '</b> — ' +
+              (mode === 'compound' ? 'it gets added to the balance, so tomorrow\'s income is calculated on the bigger total.' : 'it is paid to your income wallet, so the balance (and tomorrow\'s income) stays the same.') + '</div>' +
             '<div class="m-alert" hidden id="cmErr"></div>' +
             '<div class="m-amts" style="margin-top:.6rem"><button class="mbtn ' + (mode === 'compound' ? 'gold' : 'line') + '" data-mode="compound">' + M.icon('trend') + 'Keep compounding</button>' +
-            '<button class="mbtn ' + (mode === 'cash' ? 'gold' : 'line') + '" data-mode="cash">' + M.icon('coins') + 'Withdraw daily interest</button></div>'
+            '<button class="mbtn ' + (mode === 'cash' ? 'gold' : 'line') + '" data-mode="cash">' + M.icon('coins') + 'Transfer to income wallet</button></div>'
             : '<p class="m-muted">You have no compounding balance yet. When you buy a package, choose <b>Compounding</b> as the interest type.</p>' +
               '<a class="mbtn gold" href="#/wallet/purchase">' + M.icon('package') + 'Buy a compounding package</a>') +
           '<p class="m-muted" style="font-size:.82rem;margin-bottom:0">Each package earns ' + cycle + ' trading days, then it matures — at that point you choose to withdraw it or start a new ' + cycle +
