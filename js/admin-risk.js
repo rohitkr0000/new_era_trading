@@ -95,6 +95,17 @@
   function tiles(rows) { return '<div class="tiles">' + rows.map(function (r) { return '<div class="tile"><small>' + r[0] + '</small><b>' + r[1] + '</b></div>'; }).join('') + '</div>'; }
   function yn(v, yes, no) { return v ? UI.badge(yes || 'Yes', 'green') : UI.badge(no || 'No', 'amber'); }
 
+  /** TEST TOOL: a days-input + button per package, to instantly credit ROI days instead of waiting for real time. */
+  function ffCell(o) {
+    if (o.status !== 'running') return '<span class="muted small">—</span>';
+    var isComp = o.option === 'Compounding';
+    var remaining = o.days ? Math.max(1, o.days - o.paidDays) : 25;
+    return '<div class="row" style="gap:.3rem;align-items:center;flex-wrap:nowrap">' +
+      '<input type="number" min="1" max="400" value="' + remaining + '" class="ffDays" data-order="' + o.id + '" style="width:60px">' +
+      '<button class="btn btn-sm btn-outline ffBtn" data-order="' + o.id + '" data-comp="' + (isComp ? '1' : '0') + '">' + (isComp ? 'Advance acct' : 'Complete') + '</button>' +
+    '</div>';
+  }
+
   function renderMember(m, d, tab) {
     var u = d.member, t = d.team, c = d.cap, mo = d.money;
     var openAlerts = d.alerts.filter(function (a) { return a.status === 'open'; });
@@ -148,7 +159,8 @@
       tiles([['Deposits approved', money(mo.depositsApproved)], ['Deposits pending', money(mo.depositsPending)], ['Withdrawn (approved)', money(mo.withdrawnPaid)], ['Withdrawals pending', money(mo.withdrawalsPending)],
         ['P2P sent', money(mo.p2pSent) + ' <small>(' + mo.p2pSentCount + ')</small>'], ['P2P received', money(mo.p2pReceived) + ' <small>(' + mo.p2pReceivedCount + ')</small>']]) +
       '<div class="subhead">Packages</div>' +
-      UI.table(['Ref', 'Type', 'Option', 'Amount', 'ROI days', 'Status', 'Date'], d.orders.map(function (o) { return [esc(o.ref), esc(o.kind), esc(o.option), money(o.amount), o.paidDays + (o.days ? ' / ' + o.days : ''), esc(o.status), dt(o.date)]; }), 'No packages.') +
+      '<p class="hint">“Test: fast-forward” instantly credits ROI days right now, skipping the real wait — for testing only.</p>' +
+      UI.table(['Ref', 'Type', 'Option', 'Amount', 'ROI days', 'Status', 'Date', 'Test: fast-forward'], d.orders.map(function (o) { return [esc(o.ref), esc(o.kind), esc(o.option), money(o.amount), o.paidDays + (o.days ? ' / ' + o.days : ''), esc(o.status), dt(o.date), ffCell(o)]; }), 'No packages.') +
       '<div class="subhead">Deposits</div>' +
       UI.table(['Date', 'Amount', 'Status', 'Blockchain check', 'Transaction'], d.deposits.map(function (x) { return [dt(x.date), money(x.amount), esc(x.status), (x.verified ? UI.badge(x.verified, x.verified === 'verified' ? 'green' : x.verified === 'mismatch' ? 'red' : 'amber') : '—') + (x.note ? '<br><small class="muted">' + esc(x.note) + '</small>' : ''), '<small>' + esc(x.txn) + '</small>']; }), 'No deposits.') +
       '<div class="subhead">Withdrawals</div>' +
@@ -187,6 +199,23 @@
       wireCards(root, reload);
       root.querySelectorAll('[data-member]').forEach(function (b) { b.onclick = function (e) { e.preventDefault(); m.close(); openMember(Number(b.dataset.member)); }; });
       wireCredBlock(root, u, reload);
+      root.querySelectorAll('.ffBtn').forEach(function (b) {
+        b.onclick = function () {
+          var orderId = Number(b.dataset.order);
+          var isComp = b.dataset.comp === '1';
+          var input = root.querySelector('.ffDays[data-order="' + orderId + '"]');
+          var days = Math.max(1, Math.min(400, Number(input.value) || 1));
+          if (!window.confirm((isComp ? 'Advance ' + u.name + '’s whole compounding balance by ' : 'Instantly complete ') + days + ' trading day(s) for this package? TEST tool — it credits real ROI right now, skipping the wait.')) return;
+          b.disabled = true;
+          var call = isComp ? Store.fastForwardCompound(u.id, days) : Store.fastForwardOrder(orderId, days);
+          call.then(function (r) {
+            b.disabled = false;
+            if (!r.ok) return UI.toast(r.error, 'err');
+            UI.toast(isComp ? 'Advanced ' + r.processedDays + ' day(s), balance ' + money(r.balance) : 'Credited through day ' + r.paidDays + (r.days ? ' / ' + r.days : ''), 'ok');
+            reload();
+          });
+        };
+      });
     }
     m.box.querySelectorAll('.tab').forEach(function (b) { b.onclick = function () { show(b.dataset.tab); }; });
     wire(m.box.querySelector('#mPage'));

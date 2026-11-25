@@ -77,10 +77,10 @@ class CompoundService
         return $done;
     }
 
-    /** Process every missing day up to $today for one member. */
-    public function accrueUser(int $userId, string $today): int
+    /** Process every missing day up to $today for one member (or, with $maxDays, stop after that many trading days — used by fastForward()). */
+    public function accrueUser(int $userId, string $today, ?int $maxDays = null): int
     {
-        return DB::transaction(function () use ($userId, $today) {
+        return DB::transaction(function () use ($userId, $today, $maxDays) {
             $u = User::lockForUpdate()->find($userId);
             if (! $u || ! $this->plan->isActive($u) || ! $u->compound_through) return 0;
 
@@ -93,7 +93,7 @@ class CompoundService
             $day = Carbon::parse($u->compound_through, $tz);
             $end = Carbon::parse($today, $tz);
 
-            while ($day->lt($end)) {
+            while ($day->lt($end) && ($maxDays === null || $processed < $maxDays)) {
                 $day = $day->copy()->addDay();
                 $ds = $day->toDateString();
                 if (! Market::isTradingDay($day->copy()->setTime(12, 0))) continue;          // weekend: no interest, the lots do not age
@@ -137,5 +137,21 @@ class CompoundService
             Snapshot::forget($userId);
             return $processed;
         });
+    }
+
+    /**
+     * TEST TOOL (admin panel only): instantly process N more trading days of compounding for one member.
+     * Compounding interest is computed per member (all live lots together), not per package — there is no
+     * per-order equivalent of PlanEngine::fastForwardOrder() for a compounding purchase.
+     */
+    public function fastForward(int $userId, int $days): array
+    {
+        $days = max(1, min(400, (int) $days));
+        $u = User::find($userId);
+        if (! $u || ! $u->compound_through) throw new PlanException('This member has no compounding package.');
+        $farFuture = Carbon::parse($u->compound_through)->addDays($days * 3 + 30)->toDateString();   // a bound the day-count never actually reaches
+        $processed = $this->accrueUser($userId, $farFuture, $days);
+        if ($processed === 0) throw new PlanException('Nothing to advance — the member may be blocked, have no investment, or all lots already expired.');
+        return ['userId' => $userId, 'processedDays' => $processed, 'balance' => $this->balance($userId), 'through' => DB::table('users')->where('id', $userId)->value('compound_through')];
     }
 }

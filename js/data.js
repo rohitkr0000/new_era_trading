@@ -358,6 +358,9 @@
     resetMemberPassword: function (id, password) { return req('POST', '/admin/members/' + id + '/password', { password: password || null }); },
     resetMemberPin: function (id, pin) { return req('POST', '/admin/members/' + id + '/pin', { pin: pin || null }); },
     updateMemberSponsor: function (id, sponsorCode) { return write('PUT', '/admin/members/' + id + '/sponsor', { sponsorCode: sponsorCode }); },
+    // TEST TOOL: instantly credit N more ROI days — a package (simple interest), or a member's whole compounding balance
+    fastForwardOrder: function (orderId, days) { return req('POST', '/admin/orders/' + orderId + '/fast-forward', { days: Number(days) }); },
+    fastForwardCompound: function (id, days) { return req('POST', '/admin/members/' + id + '/compound/fast-forward', { days: Number(days) }); },
     reset: function () { return req('POST', '/admin/reset').then(function (r) { if (r.ok) logout(); return r; }); }
   };
 })(window);

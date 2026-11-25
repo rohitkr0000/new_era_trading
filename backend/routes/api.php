@@ -60,6 +60,8 @@ Route::middleware(['auth:sanctum', 'throttle:user', 'forget.snapshot'])->group(f
         Route::post('/members/{id}/password', [RiskController::class, 'resetPassword'])->whereNumber('id')->middleware('throttle:admin-action');
         Route::post('/members/{id}/pin', [RiskController::class, 'resetPin'])->whereNumber('id')->middleware('throttle:admin-action');
         Route::put('/members/{id}/sponsor', [RiskController::class, 'updateSponsor'])->whereNumber('id')->middleware('throttle:admin-action');
+        Route::post('/orders/{orderId}/fast-forward', [RiskController::class, 'fastForwardOrder'])->whereNumber('orderId')->middleware('throttle:admin-action');
+        Route::post('/members/{id}/compound/fast-forward', [RiskController::class, 'fastForwardCompound'])->whereNumber('id')->middleware('throttle:admin-action');
         Route::get('/alerts', [RiskController::class, 'alerts']);
         Route::post('/alerts/scan', [RiskController::class, 'scan'])->middleware('throttle:admin-action');
         Route::post('/alerts/{id}', [RiskController::class, 'alertUpdate'])->whereNumber('id');

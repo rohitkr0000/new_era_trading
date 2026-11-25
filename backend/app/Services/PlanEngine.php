@@ -353,4 +353,44 @@ class PlanEngine
         }
         return $credits + app(CompoundService::class)->accrue($now);
     }
+
+    /**
+     * TEST TOOL (admin panel only): instantly credit N more trading days of ROI for ONE simple-interest
+     * package, instead of waiting for `net:accrue` to catch up with real time. Compounding packages are not
+     * per-package (all of a member's lots are processed together) — see CompoundService::fastForward() for those.
+     */
+    public function fastForwardOrder(int $orderId, int $days): array
+    {
+        $days = max(1, min(400, (int) $days));
+        return DB::transaction(function () use ($orderId, $days) {
+            $o = DB::table('orders')->where('id', $orderId)->lockForUpdate()->first();
+            if (! $o) throw new PlanException('Package not found.');
+            if ($o->option === 'Compounding') throw new PlanException('This is a compounding package — use the compounding fast-forward instead.');
+            if ($o->status !== 'running') throw new PlanException('This package is not running (status: ' . $o->status . ').');
+
+            $tz = Settings::get('timezone');
+            $day = Carbon::parse($o->created_at)->setTimezone($tz)->startOfDay()->addDays($o->steps);
+            $steps = $o->steps;
+            $paid = $o->paid_days;
+            $target = $paid + $days;
+            $credited = 0;
+
+            while ($paid < $target) {
+                if ($o->days && $paid >= $o->days) break;
+                $day = $day->copy()->addDay();
+                $steps++;
+                if (! Market::isTradingDay($day->copy()->setTime(12, 0))) continue;
+                $paid++;
+                $u = User::find($o->user_id);
+                if (! $this->isActive($u)) continue;
+
+                $when = $day->copy()->setTime(0, 1)->setTimezone('UTC');
+                $roi = $this->credit($u->id, 'roi', Money::pct($o->amount, $o->pct), 'ROI ' . (float) $o->pct . '% on ' . $o->ref . ' · trading day ' . $paid . ' (admin test fast-forward)', null, $when, $o->id);
+                if (Money::pos($roi)) $credited++;
+            }
+            $status = ($o->days && $paid >= $o->days) ? 'closed' : $o->status;
+            DB::table('orders')->where('id', $orderId)->update(['steps' => $steps, 'paid_days' => $paid, 'status' => $status]);
+            return ['orderId' => $orderId, 'paidDays' => $paid, 'days' => (int) $o->days, 'credited' => $credited, 'status' => $status];
+        });
+    }
 }

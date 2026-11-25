@@ -22,7 +22,7 @@ use Illuminate\Validation\Rules\Password;
 /** Admin: one member's full picture (team, income, money, activity) and the suspicious-activity alerts. */
 class RiskController extends Controller
 {
-    public function __construct(private PlanEngine $plan, private RiskService $risk) {}
+    public function __construct(private PlanEngine $plan, private RiskService $risk, private \App\Services\CompoundService $compound) {}
 
     private function admin(Request $request): User
     {
@@ -192,6 +192,29 @@ class RiskController extends Controller
         return response()->json(['ok' => true, 'sponsor' => ['id' => $sponsor->id, 'name' => $sponsor->name, 'code' => $sponsor->code]]);
     }
 
+    /* ------------------------------------------------------------------ TEST TOOL: fast-forward ROI days (admin panel only) */
+
+    /** Instantly credit N more trading days of ROI for one simple-interest package. */
+    public function fastForwardOrder(Request $request, int $orderId): JsonResponse
+    {
+        $admin = $this->admin($request);
+        $d = $request->validate(['days' => 'required|integer|min:1|max:400']);
+        $r = $this->plan->fastForwardOrder($orderId, $d['days']);
+        Audit::log('admin.roi-fast-forward', $admin, 'order#' . $orderId, $r);
+        return response()->json(['ok' => true] + $r);
+    }
+
+    /** Instantly process N more trading days of compounding for one member (all their live lots together). */
+    public function fastForwardCompound(Request $request, int $id): JsonResponse
+    {
+        $admin = $this->admin($request);
+        $u = User::where('role', 'member')->findOrFail($id);
+        $d = $request->validate(['days' => 'required|integer|min:1|max:400']);
+        $r = $this->compound->fastForward($u->id, $d['days']);
+        Audit::log('admin.roi-fast-forward', $admin, 'user#' . $u->id, $r);
+        return response()->json(['ok' => true] + $r);
+    }
+
     /* ------------------------------------------------------------------ one member */
 
     public function member(Request $request, int $id): JsonResponse
@@ -254,7 +277,7 @@ class RiskController extends Controller
                 'withdrawnPaid' => self::n($wds['approved']->s ?? 0), 'withdrawnNet' => self::n($wds['approved']->net ?? 0), 'withdrawalsPending' => self::n($wds['pending']->s ?? 0), 'withdrawalsRejected' => self::n($wds['rejected']->s ?? 0),
                 'p2pSent' => self::n($p2pOut->s), 'p2pSentCount' => (int) $p2pOut->n, 'p2pReceived' => self::n($p2pIn->s), 'p2pReceivedCount' => (int) $p2pIn->n,
             ],
-            'orders' => DB::table('orders')->where('user_id', $id)->orderByDesc('id')->limit(15)->get()->map(fn ($o) => ['ref' => $o->ref, 'kind' => $o->kind, 'option' => $o->option, 'amount' => self::n($o->amount), 'paidDays' => (int) $o->paid_days, 'days' => (int) $o->days, 'status' => $o->status, 'date' => Snapshot::ms($o->created_at)])->values(),
+            'orders' => DB::table('orders')->where('user_id', $id)->orderByDesc('id')->limit(15)->get()->map(fn ($o) => ['id' => $o->id, 'ref' => $o->ref, 'kind' => $o->kind, 'option' => $o->option, 'amount' => self::n($o->amount), 'paidDays' => (int) $o->paid_days, 'days' => (int) $o->days, 'status' => $o->status, 'date' => Snapshot::ms($o->created_at)])->values(),
             'deposits' => DB::table('deposits')->where('user_id', $id)->orderByDesc('id')->limit(10)->get()->map(fn ($d) => ['id' => $d->id, 'amount' => self::n($d->amount), 'status' => $d->status, 'verified' => $d->verified, 'note' => $d->verify_note, 'txn' => $d->txn_id, 'date' => Snapshot::ms($d->created_at)])->values(),
             'withdrawals' => DB::table('withdrawals')->where('user_id', $id)->orderByDesc('id')->limit(10)->get()->map(fn ($w) => ['ref' => $w->ref, 'amount' => self::n($w->amount), 'fee' => self::n($w->fee), 'net' => self::n($w->net), 'status' => $w->status, 'account' => $w->account, 'date' => Snapshot::ms($w->created_at)])->values(),
             'transfers' => $transfers->map(fn ($t) => ['kind' => $t->kind, 'dir' => $t->from_id == $id ? 'out' : 'in', 'other' => $t->kind === 'self' ? null : ($codes[$t->from_id == $id ? $t->to_id : $t->from_id] ?? null), 'amount' => self::n($t->amount), 'fee' => self::n($t->fee), 'date' => Snapshot::ms($t->created_at)])->values(),
