@@ -1,9 +1,9 @@
 /* panel.css — member + admin dashboards */
 :root { --side-w: 250px; }
-.shell { display: grid; grid-template-columns: var(--side-w) 1fr; min-height: 100vh; }
+.shell { display: grid; grid-template-columns: var(--side-w) 1fr; min-height: 100vh; min-height: 100dvh; }
 
 /* ---------- sidebar ---------- */
-.sidebar { background: #061230; color: #cbd5e1; padding: 1.2rem .9rem; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+.sidebar { background: #061230; color: #cbd5e1; padding: 1.2rem .9rem; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; height: 100dvh; overflow-y: auto; }
 .sidebar .brand { color: #fff; padding: .3rem .6rem 1.2rem; }
 .nav-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: #64748b; padding: .4rem .7rem; }
 .nav { display: grid; gap: .2rem; }

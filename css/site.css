@@ -60,7 +60,7 @@ footer.site-foot { padding: 2rem 0; color: var(--muted); font-size: .88rem; bord
 .disclaimer { font-size: .8rem; margin-top: .6rem; }
 
 /* ---------- auth pages ---------- */
-.auth-wrap { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
+.auth-wrap { min-height: 100vh; min-height: 100dvh; display: grid; grid-template-columns: 1fr 1fr; }
 .auth-side { background: linear-gradient(145deg, #030a1c, #0f3d9e); color: #fff; padding: 3rem; display: flex; flex-direction: column; justify-content: center; }
 .auth-side h2 { font-size: 2rem; }
 .auth-side ul { padding-left: 1.2rem; line-height: 2; opacity: .92; }

@@ -72,7 +72,7 @@ section { position: relative; padding: 6.5rem 0; overflow: hidden; }
 .auth { display: flex; gap: .6rem; align-items: center; }
 
 /* ---------- hero ---------- */
-.hero { min-height: 100vh; display: flex; align-items: center; padding: 8rem 0 5rem; background: radial-gradient(900px 500px at 75% 20%, rgba(30, 108, 255, .35), transparent 60%), radial-gradient(700px 500px at 10% 90%, rgba(255, 201, 51, .22), transparent 60%), var(--bg); }
+.hero { min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; padding: 8rem 0 5rem; background: radial-gradient(900px 500px at 75% 20%, rgba(30, 108, 255, .35), transparent 60%), radial-gradient(700px 500px at 10% 90%, rgba(255, 201, 51, .22), transparent 60%), var(--bg); }
 .net-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
 .orb { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .55; z-index: 0; animation: drift 14s ease-in-out infinite alternate; }
 .orb.o1 { width: 340px; height: 340px; background: #ffc933; left: -80px; top: 18%; }

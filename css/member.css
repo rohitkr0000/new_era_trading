@@ -96,7 +96,7 @@ body.member { margin: 0; background: var(--bg); color: var(--ink); font-family: 
 .m-umenu .danger { color: var(--bad) !important; }
 .m-umenu-h { display: flex; gap: .7rem; align-items: center; padding: .7rem; margin-bottom: .3rem; border-bottom: 1px solid var(--line2); }
 .m-umenu-h small { display: block; color: var(--muted); font-size: .78rem; }
-.m-notif { width: 360px; max-height: 70vh; overflow: auto; }
+.m-notif { width: 360px; max-height: 70vh; max-height: 70dvh; overflow: auto; }
 .m-notif header { display: flex; justify-content: space-between; align-items: center; padding: .6rem .75rem; border-bottom: 1px solid var(--line2); }
 .m-notif header small { color: var(--muted); }
 .m-notif a { display: flex; gap: .7rem; padding: .65rem .75rem; border-radius: 12px; color: var(--ink) !important; }
@@ -375,7 +375,7 @@ a.m-kpi:hover .m-kpi-go { opacity: 1; transform: translateX(2px); }
 /* ---------- modal ---------- */
 .m-modal-wrap { position: fixed; inset: 0; z-index: 200; background: rgba(6, 18, 48, .55); backdrop-filter: blur(4px); display: grid; place-items: center; padding: 1rem; opacity: 0; transition: opacity .25s; }
 .m-modal-wrap.show { opacity: 1; }
-.m-modal { width: min(460px, 100%); max-height: 90vh; display: flex; flex-direction: column; background: var(--card); border-radius: 22px; box-shadow: var(--sh-lg); transform: translateY(20px) scale(.97); transition: transform .3s var(--e); }
+.m-modal { width: min(460px, 100%); max-height: 90vh; max-height: 90dvh; display: flex; flex-direction: column; background: var(--card); border-radius: 22px; box-shadow: var(--sh-lg); transform: translateY(20px) scale(.97); transition: transform .3s var(--e); }
 .m-modal.wide { width: min(820px, 100%); }
 .m-modal-wrap.show .m-modal { transform: none; }
 .m-modal header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1.1rem 1.3rem; border-bottom: 1px solid var(--line2); }
@@ -525,7 +525,7 @@ body.member { padding-bottom: 120px; }
 
 /* panel pops upward, centred on the dock */
 .m-dock .m-mega { position: absolute; top: auto; bottom: calc(100% + 16px); left: 50%; transform: translate(-50%, 12px) scale(.98); transform-origin: bottom center;
-  min-width: 380px; max-height: min(70vh, 560px); overflow: auto; padding: .7rem; border-radius: 22px; }
+  min-width: 380px; max-height: min(70vh, 560px); max-height: min(70dvh, 560px); overflow: auto; padding: .7rem; border-radius: 22px; }
 .m-dock .m-mega::before { display: none; }
 .m-dock .m-mega.wide { min-width: 660px; }
 .m-dock .m-dk-i.open .m-mega { opacity: 1; visibility: visible; transform: translate(-50%, 0) scale(1); }
