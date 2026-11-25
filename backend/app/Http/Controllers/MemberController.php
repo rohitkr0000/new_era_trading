@@ -176,6 +176,28 @@ class MemberController extends Controller
         return response()->json(['ok' => true, 'mode' => $d['mode']]);
     }
 
+    /** Cash out one compounding package now — early (at its current value) or, once matured, its frozen total. */
+    public function compoundWithdraw(Request $request, CompoundService $compound, int $orderId): JsonResponse
+    {
+        $u = $this->member($request);
+        $d = $request->validate(['pin' => 'required']);
+        $this->checkPin($request);
+        $r = $compound->withdrawOrder($u->id, $orderId);
+        Audit::log('compound.withdraw', $u, 'order#' . $orderId, ['value' => $r['value']]);
+        return response()->json(['ok' => true] + $r);
+    }
+
+    /** A matured compounding package: start a brand-new 25-day cycle on its frozen total instead of withdrawing it. */
+    public function compoundRecompound(Request $request, CompoundService $compound, int $orderId): JsonResponse
+    {
+        $u = $this->member($request);
+        $d = $request->validate(['pin' => 'required']);
+        $this->checkPin($request);
+        $r = $compound->recompound($u->id, $orderId);
+        Audit::log('compound.recompound', $u, 'order#' . $orderId, ['principal' => $r['principal']]);
+        return response()->json(['ok' => true] + $r);
+    }
+
     public function profile(Request $request): JsonResponse
     {
         $u = $this->member($request);

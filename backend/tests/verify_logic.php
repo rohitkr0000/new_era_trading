@@ -387,35 +387,58 @@ try {
     $runDays('2026-11-23', '2026-12-21');                        // through trading day 25 (Monday 21 Dec)
     $rows = DB::table('compound_ledger')->where('user_id', $CA->id)->orderBy('day')->get();
     eq('25 trading days were processed', $rows->count(), 25);
-    $last = $rows->last();
-    check('day 25: the $100 principal expires', Money::r($last->expiring) === '100.00', json_encode($last));
-    $peak = Money::r($last->closing) ;
-    check('after the cycle $238.64 remains (338.64 - 100) — the sheet', abs((float) $last->closing - 238.64) <= 0.08, 'closing ' . $last->closing);
+    $orderA = DB::table('orders')->where('user_id', $CA->id)->where('option', 'Compounding')->first();
+    eq('day 25: the order matures instead of silently expiring', $orderA->status, 'matured');
+    check('the matured total is the full compounded $338.64 — nothing is lost', abs((float) $orderA->matured_balance - 338.64) <= 0.1, 'matured ' . $orderA->matured_balance);
     eq('compounded interest is NOT income: nothing reached the income wallet', Money::r(User::find($CA->id)->wallet), '0.00');
-    eq('the package is closed after its cycle', DB::table('orders')->where('user_id', $CA->id)->value('status'), 'closed');
+    eq('balance() still reports the matured total (it moved, it did not vanish)', $comp->balance($CA->id), Money::r($orderA->matured_balance));
     $again = $comp->accrue();
     eq('running the job again for the same day does nothing (idempotent)', $again, 0);
 
-    // member A: after 25 days switch to "withdraw the daily interest" (sheet tab 3)
+    // member A: matured — re-compound its frozen total into a fresh 25-day cycle, in cash mode this time
     $comp->setMode(User::find($CA->id), 'cash');
-    $runDays('2026-12-22', '2027-01-25');                        // trading days 26 … 50
-    $cashA = (float) DB::table('ledger')->where('user_id', $CA->id)->where('type', 'roi')->sum('amount');
-    check('"withdraw after 25 days": 25 more days pay about $184.66 in cash (the sheet\'s tab, corrected typo)', abs($cashA - 184.66) <= 0.6, 'cash ' . $cashA);
-    eq('...and that cash is in the income wallet', Money::r(User::find($CA->id)->wallet), Money::r($cashA));
-    check('the cash stays within the 2X cap of $200', $cashA <= 200.0);
+    $rc = $comp->recompound($CA->id, $orderA->id);
+    check('re-compound starts a new cycle from the matured total', abs($rc['principal'] - (float) $orderA->matured_balance) < 0.01, json_encode($rc));
+    eq('the order runs again', DB::table('orders')->where('id', $orderA->id)->value('status'), 'running');
+    throws('a running order cannot be re-compounded again', fn () => $comp->recompound($CA->id, $orderA->id), 'not ready to re-compound');
 
-    // member B: keeps compounding for another 25 days (sheet tab 4)
-    $runDays('2026-12-22', '2027-01-25');
-    $rowsB = DB::table('compound_ledger')->where('user_id', $CB->id)->orderBy('day')->get();
-    eq('member B was processed for 50 trading days', $rowsB->count(), 50);
-    check('"keep compounding": the balance on day 50 is about $404.97', abs((float) $rowsB->last()->closing - 404.97) <= 0.6, 'closing ' . $rowsB->last()->closing);
+    // member B: matured too — re-compound (no mode switch) at the SAME moment as A, before the clock moves on
+    $orderB = DB::table('orders')->where('user_id', $CB->id)->where('option', 'Compounding')->first();
+    eq('member B also matured at day 25 (every order matures on its own)', $orderB->status, 'matured');
+    $comp->recompound($CB->id, $orderB->id);
+
+    $runDays('2026-12-22', '2027-01-25');                        // 25 more trading days for both new cycles at once
+    $cashA = round((float) DB::table('ledger')->where('user_id', $CA->id)->where('type', 'roi')->sum('amount'), 2);
+    check('cash paid on the re-compounded cycle stays within the 2X cap of $200', $cashA > 0 && $cashA <= 200.0, 'cash ' . $cashA);
+    $orderB2 = DB::table('orders')->where('id', $orderB->id)->first();
+    check('member B keeps compounding: ~$338.64 x 1.05^25 matures near $1146.8', $orderB2->status === 'matured' && abs((float) $orderB2->matured_balance - 1146.8) <= 8, json_encode($orderB2));
     eq('member B has still earned no cash', Money::r(User::find($CB->id)->wallet), '0.00');
 
-    // member C: $10 -> 2X cap = $20; cash interest is trimmed to the cap, compounding on paper is not
-    $comp->setMode(User::find($CC->id), 'cash');
-    $runDays('2027-01-26', '2027-04-30');
-    $incC = $plan->incomeTotal($CC->id);
-    check('cash interest never exceeds the 2X earning cap ($20 on $10)', Money::cmp($incC, '20.00') <= 0, 'income ' . $incC);
+    // member C: $10 package also matured (~$33.86); withdrawing it shows the cap only trims the GROWTH, never the principal
+    $orderC = DB::table('orders')->where('user_id', $CC->id)->where('option', 'Compounding')->first();
+    check('member C: $10 compounded 25 days -> ~$33.86 (10 x 1.05^25)', $orderC->status === 'matured' && abs((float) $orderC->matured_balance - 33.86) <= 0.3, json_encode($orderC));
+    $wdC = $comp->withdrawOrder($CC->id, $orderC->id);
+    check('growth beyond the $10 principal (~$23.86) is trimmed to the 2X cap ($20)', abs($wdC['growthCredited'] - 20.0) < 0.01, json_encode($wdC));
+    eq('the $10 principal is refunded in full, never capped', $wdC['principalReturned'], '10.00');
+    eq('wallet = principal + capped growth = $30.00', Money::r(User::find($CC->id)->fresh()->wallet), '30.00');
+    eq('income (capped) total sits exactly at the $20 cap', $plan->incomeTotal($CC->id), '20.00');
+    eq('the order is closed after withdrawal', DB::table('orders')->where('id', $orderC->id)->value('status'), 'closed');
+    throws('withdrawing an already-closed package is refused', fn () => $comp->withdrawOrder($CC->id, $orderC->id), 'already been withdrawn');
+
+    section('Compounding — early withdrawal (member cashes out before maturity)');
+    $earlyMon = Carbon::parse($MON)->addWeeks(40);
+    at($earlyMon->format('Y-m-d') . ' 06:30:00');
+    $CE = $mk('cmpe', null, null);
+    $plan->invest($CE->id, 100, 'Compounding');
+    at($earlyMon->copy()->addDay()->format('Y-m-d') . ' 06:30:00');   // Tuesday = day 1: $100 -> $105
+    $comp->accrue();
+    $orderE = DB::table('orders')->where('user_id', $CE->id)->where('option', 'Compounding')->first();
+    check('still running after just 1 day', $orderE->status === 'running', $orderE->status);
+    $wdE = $comp->withdrawOrder($CE->id, $orderE->id);
+    check('early withdrawal pays the value reached so far (~$105), forfeiting the rest of the cycle', abs($wdE['value'] - 105.0) < 0.01, json_encode($wdE));
+    eq('$100 principal refunded + $5 growth credited as roi', $wdE['principalReturned'] . '/' . $wdE['growthCredited'], '100.00/5.00');
+    eq('the order closes immediately', DB::table('orders')->where('id', $orderE->id)->value('status'), 'closed');
+    throws('a package cannot be re-compounded unless it has matured', fn () => $comp->recompound($CE->id, $orderE->id), 'not ready to re-compound');
 
     section('E-mail — sender "New Era Trading", registration / withdrawal / OTP messages');
     config(['mail.default' => 'array']);

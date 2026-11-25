@@ -56,7 +56,8 @@ class Snapshot
     private static function order($o): array
     {
         return ['id' => $o->id, 'ref' => $o->ref, 'userId' => $o->user_id, 'amount' => self::num($o->amount), 'kind' => $o->kind, 'option' => $o->option,
-            'pct' => (float) $o->pct, 'days' => (int) $o->days, 'steps' => (int) $o->steps, 'paidDays' => (int) $o->paid_days, 'status' => $o->status, 'date' => self::ms($o->created_at)];
+            'pct' => (float) $o->pct, 'days' => (int) $o->days, 'steps' => (int) $o->steps, 'paidDays' => (int) $o->paid_days, 'status' => $o->status,
+            'maturedBalance' => $o->matured_balance !== null ? self::num($o->matured_balance) : null, 'date' => self::ms($o->created_at)];
     }
 
     private static function tx($t): array
@@ -282,16 +283,21 @@ class Snapshot
             'date' => self::ms($t->created_at), 'replies' => ($replies[$t->id] ?? collect())->map(fn ($r) => ['by' => $r->by, 'text' => $r->text, 'date' => self::ms($r->created_at)])->values()->all()])->all();
     }
 
-    /** The member's compounding balance: live lots and the daily schedule (newest 90 days). */
+    /** The member's compounding balance: live lots, each compounding package's own state, and the daily schedule (newest 90 days). */
     private function compoundRows(User $me): array
     {
         $lots = DB::table('compound_lots')->where('user_id', $me->id)->where('days_left', '>', 0)->orderBy('id')->get();
         $sched = DB::table('compound_ledger')->where('user_id', $me->id)->orderByDesc('day')->limit(90)->get();
+        $orders = DB::table('orders')->where('user_id', $me->id)->where('option', 'Compounding')->orderByDesc('id')->get();
+        $liveByOrder = $lots->groupBy(fn ($l) => (string) $l->order_id);
         return [
             'mode' => $me->compound_mode ?: 'compound',
-            'balance' => self::num($lots->sum('amount')),
-            'lots' => $lots->map(fn ($l) => ['id' => $l->id, 'amount' => self::num($l->amount), 'principal' => (bool) $l->is_principal, 'daysLeft' => (int) $l->days_left, 'since' => $l->created_on])->values()->all(),
+            'balance' => self::num($lots->sum('amount') + $orders->whereNotNull('matured_balance')->sum('matured_balance')),
+            'lots' => $lots->map(fn ($l) => ['id' => $l->id, 'orderId' => $l->order_id, 'amount' => self::num($l->amount), 'principal' => (bool) $l->is_principal, 'daysLeft' => (int) $l->days_left, 'since' => $l->created_on])->values()->all(),
             'schedule' => $sched->map(fn ($r) => ['day' => $r->day, 'mode' => $r->mode, 'opening' => self::num($r->opening), 'interest' => self::num($r->interest), 'expiring' => self::num($r->expiring), 'closing' => self::num($r->closing)])->values()->all(),
+            'packages' => $orders->map(fn ($o) => ['orderId' => $o->id, 'ref' => $o->ref, 'amount' => self::num($o->amount), 'status' => $o->status,
+                'paidDays' => (int) $o->paid_days, 'days' => (int) $o->days, 'date' => self::ms($o->created_at),
+                'value' => $o->status === 'matured' ? self::num($o->matured_balance) : self::num(($liveByOrder[(string) $o->id] ?? collect())->sum('amount'))])->values()->all(),
         ];
     }
 

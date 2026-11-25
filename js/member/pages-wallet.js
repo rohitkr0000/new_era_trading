@@ -152,7 +152,8 @@
     title: 'Compounding',
     render: function (el, ctx) {
       var S = ctx.S, C = Store.compound(), mode = C.mode === 'cash' ? 'cash' : 'compound', has = C.lots.length > 0 || C.schedule.length > 0;
-      var cycle = S.roiDays || 25;
+      var cycle = S.roiDays || 25, packages = C.packages || [];
+      var STAT = { running: ['Running', 'info'], matured: ['Ready to decide', 'ok'], closed: ['Withdrawn', 'muted'] };
       el.innerHTML = '<div class="m-split wide-l">' +
         M.card('Compounding balance',
           '<div class="m-big-bal"><small>Live balance earning ' + S.roiPct + '% per trading day</small><b>' + M.money(C.balance) + '</b></div>' +
@@ -163,13 +164,22 @@
             '<button class="mbtn ' + (mode === 'cash' ? 'gold' : 'line') + '" data-mode="cash">' + M.icon('coins') + 'Withdraw daily interest</button></div>'
             : '<p class="m-muted">You have no compounding balance yet. When you buy a package, choose <b>Compounding</b> as the interest type.</p>' +
               '<a class="mbtn gold" href="#/wallet/purchase">' + M.icon('package') + 'Buy a compounding package</a>') +
-          '<p class="m-muted" style="font-size:.82rem;margin-bottom:0">Every amount lives ' + cycle + ' trading days, then it expires — your purchased amount after its ' + cycle + ' days, and each day\'s added interest ' + cycle +
-            ' days after it was added. No interest on Saturday and Sunday. Only interest paid in cash counts towards your earning cap and can be withdrawn.</p>', { icon: 'trend' }) +
+          '<p class="m-muted" style="font-size:.82rem;margin-bottom:0">Each package earns ' + cycle + ' trading days, then it matures — at that point you choose to withdraw it or start a new ' + cycle +
+            '-day cycle on it. You can also withdraw a package early, at whatever it has grown to so far (further growth for that cycle is then forfeited). No interest on Saturday and Sunday.</p>', { icon: 'trend' }) +
+        M.card('Your compounding packages', packages.length ? '<ul class="m-kv" id="cmPkgs">' + packages.map(function (p) {
+          var st = STAT[p.status] || ['—', 'muted'];
+          var actions = '';
+          if (p.status === 'running') actions = '<button class="mbtn line sm" data-wd="' + p.orderId + '">' + M.icon('coins') + 'Withdraw now</button>';
+          else if (p.status === 'matured') actions = '<button class="mbtn gold sm" data-wd="' + p.orderId + '">' + M.icon('coins') + 'Withdraw</button>' +
+            '<button class="mbtn line sm" data-rc="' + p.orderId + '">' + M.icon('trend') + 'Re-compound</button>';
+          return '<li style="flex-wrap:wrap"><span><code>' + M.esc(p.ref) + '</code> <small class="m-muted">bought ' + M.date(p.date) + ' · ' + p.paidDays + '/' + p.days + ' days · ' + M.badge(st[0], st[1]) + '</small></span>' +
+            '<b>' + M.money(p.value) + '</b>' + (actions ? '<div style="flex:0 0 100%;margin-top:.4rem;display:flex;gap:.4rem">' + actions + '</div>' : '') + '</li>';
+        }).join('') + '</ul>' : '<p class="m-muted">Buy a compounding package to see it listed here.</p>', { icon: 'package' }) +
         M.card('Live amounts', C.lots.length ? '<ul class="m-kv">' + C.lots.map(function (l) {
           return '<li><span>' + (l.principal ? 'Purchased amount' : 'Interest of ' + M.esc(l.since)) + ' <small class="m-muted">· ' + l.daysLeft + ' day' + (l.daysLeft === 1 ? '' : 's') + ' left</small></span><b>' + M.money(l.amount) + '</b></li>';
         }).join('') + '</ul>' : '<p class="m-muted">Nothing is earning right now.</p>', { icon: 'layers' }) +
         '</div>' +
-        M.card('Daily schedule', '<div id="cmT"></div>', { icon: 'list', sub: 'Opening + interest − expiring = closing, newest first' });
+        M.card('Daily schedule', '<div id="cmT"></div>', { icon: 'list', sub: 'Opening + interest − matured = closing, newest first' });
 
       el.querySelectorAll('[data-mode]').forEach(function (b) {
         b.onclick = function () {
@@ -185,13 +195,45 @@
           });
         };
       });
+      el.querySelectorAll('[data-wd]').forEach(function (b) {
+        b.onclick = function () {
+          var orderId = b.dataset.wd, pkg = packages.filter(function (p) { return String(p.orderId) === orderId; })[0];
+          var early = pkg && pkg.status === 'running';
+          M.confirm('Withdraw this package', '<p>You will receive <b>' + M.money(pkg ? pkg.value : 0) + '</b> in your income wallet' +
+            (early ? ' right now — this package stops compounding, so it will not earn the rest of its 25-day cycle.' : '.') + '</p>', 'Withdraw').then(function (ok) {
+            return ok ? M.askPin(ctx.me.id) : null;
+          }).then(function (pin) {
+            if (!pin) return null;
+            return Store.withdrawCompoundOrder(orderId, pin).then(function (r) {
+              if (!r.ok) return M.toast(r.error, 'err');
+              M.toast('Withdrawn ' + M.money(r.value) + ' to your income wallet');
+              ctx.refresh();
+            });
+          });
+        };
+      });
+      el.querySelectorAll('[data-rc]').forEach(function (b) {
+        b.onclick = function () {
+          var orderId = b.dataset.rc, pkg = packages.filter(function (p) { return String(p.orderId) === orderId; })[0];
+          M.confirm('Re-compound this package', '<p>' + M.money(pkg ? pkg.value : 0) + ' will start a brand-new ' + cycle + '-day compounding cycle as the new principal.</p>', 'Re-compound').then(function (ok) {
+            return ok ? M.askPin(ctx.me.id) : null;
+          }).then(function (pin) {
+            if (!pin) return null;
+            return Store.recompoundOrder(orderId, pin).then(function (r) {
+              if (!r.ok) return M.toast(r.error, 'err');
+              M.toast('Re-compounding ' + M.money(r.principal) + ' for ' + cycle + ' more days');
+              ctx.refresh();
+            });
+          });
+        };
+      });
       M.table(document.getElementById('cmT'), {
         rows: C.schedule, search: false, per: 15, empty: 'The schedule appears after the first trading day.',
         columns: [
           { key: 'day', label: 'Day', render: function (r) { return M.esc(r.day); } },
           { key: 'opening', label: 'Opening', align: 'r', render: function (r) { return M.money(r.opening); } },
           { key: 'interest', label: 'Interest', align: 'r', render: function (r) { return '<b class="pos">+' + M.money(r.interest) + '</b> <small class="m-muted">' + (r.mode === 'cash' ? 'paid' : 'added') + '</small>'; } },
-          { key: 'expiring', label: 'Expiring', align: 'r', render: function (r) { return r.expiring > 0 ? '<span class="neg">−' + M.money(r.expiring) + '</span>' : '—'; } },
+          { key: 'expiring', label: 'Matured', align: 'r', render: function (r) { return r.expiring > 0 ? '<span>' + M.money(r.expiring) + '</span>' : '—'; } },
           { key: 'closing', label: 'Closing', align: 'r', render: function (r) { return M.money(r.closing); } }
         ]
       });

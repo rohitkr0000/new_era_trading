@@ -41,6 +41,8 @@ Route::middleware(['auth:sanctum', 'throttle:user', 'forget.snapshot'])->group(f
         Route::post('/transfer/otp', [MemberController::class, 'transferOtp'])->middleware('throttle:otp-request');
         Route::post('/transfer', [MemberController::class, 'transferMember'])->middleware('throttle:otp-confirm');
         Route::post('/compound/mode', [MemberController::class, 'compoundMode'])->middleware('throttle:otp-confirm');
+        Route::post('/compound/orders/{orderId}/withdraw', [MemberController::class, 'compoundWithdraw'])->whereNumber('orderId')->middleware('throttle:otp-confirm');
+        Route::post('/compound/orders/{orderId}/recompound', [MemberController::class, 'compoundRecompound'])->whereNumber('orderId')->middleware('throttle:otp-confirm');
         Route::post('/withdrawals/otp', [MemberController::class, 'withdrawOtp'])->middleware('throttle:otp-request');
         Route::post('/withdrawals', [MemberController::class, 'withdraw'])->middleware('throttle:otp-confirm');
         Route::put('/profile', [MemberController::class, 'profile']);

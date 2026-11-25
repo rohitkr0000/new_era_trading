@@ -299,6 +299,8 @@
     purchasePackage: function (userId, amount, source, pin, mode) { return write('POST', '/member/purchase', { amount: Number(amount), source: source, pin: pin, mode: mode || 'simple' }); },
     compound: function () { return db.compound || { mode: 'compound', balance: 0, lots: [], schedule: [] }; },
     setCompoundMode: function (mode, pin) { return write('POST', '/member/compound/mode', { mode: mode, pin: pin }); },
+    withdrawCompoundOrder: function (orderId, pin) { return write('POST', '/member/compound/orders/' + orderId + '/withdraw', { pin: pin }); },
+    recompoundOrder: function (orderId, pin) { return write('POST', '/member/compound/orders/' + orderId + '/recompound', { pin: pin }); },
     requestDeposit: function (userId, amount, txnId) { return write('POST', '/member/deposits', { amount: Number(amount), txnId: txnId }); },
     transferToPurchase: function (userId, amount, pin) { return write('POST', '/member/transfer-self', { amount: Number(amount), pin: pin }); },
     // P2P is a 2-step flow: preview + e-mailed OTP first, then the transfer with the code
