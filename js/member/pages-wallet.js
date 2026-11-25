@@ -92,14 +92,12 @@
     render: function (el, ctx) {
       var me = ctx.me, S = ctx.S, retopup = me.invested > 0, sp = me.sponsorId ? Store.byId(me.sponsorId) : null;
       var quick = [5, 10, 25, 50, 100, 250, 500];
-      var payoutMode = Store.compound().mode === 'cash' ? 'cash' : 'compound';
       el.innerHTML = balances(me) + '<div class="m-split wide-l">' +
         M.card('Buy a package', '<div class="m-alert" hidden id="buyErr"></div><form id="buyForm" class="m-form">' +
           '<div class="m-seg"><label><input type="radio" name="src" value="purchase" checked><span>' + M.icon('wallet') + '<b>Purchase wallet</b><small>' + M.money(me.purchaseWallet || 0) + ' · Investment</small></span></label>' +
           '<label><input type="radio" name="src" value="income"><span>' + M.icon('coins') + '<b>Income wallet</b><small>' + M.money(me.wallet) + ' · Compounding</small></span></label></div>' +
-          '<label class="m-lbl" style="display:block;font-weight:700;margin:.2rem 0 .4rem">Daily income</label>' +
-          '<div class="m-seg"><label><input type="radio" name="payout" value="compound"' + (payoutMode === 'compound' ? ' checked' : '') + '><span>' + M.icon('trend') + '<b>Keep compounding</b><small>' + S.roiPct + '% added to your balance daily — interest on interest</small></span></label>' +
-          '<label><input type="radio" name="payout" value="cash"' + (payoutMode === 'cash' ? ' checked' : '') + '><span>' + M.icon('coins') + '<b>Transfer to income wallet</b><small>' + S.roiPct + '% paid to your income wallet every trading day</small></span></label></div>' +
+          '<label class="m-lbl" style="display:block;font-weight:700;margin:.2rem 0 .4rem">Interest type</label>' +
+          '<div class="m-seg" style="grid-template-columns:1fr"><label><input type="radio" name="payout" value="compound" checked><span>' + M.icon('trend') + '<b>Compounding</b><small>' + S.roiPct + '% added daily, interest on interest. Pick anytime whether to keep compounding or get it paid to your income wallet from <a href="#/wallet/compounding">Compounding</a>.</small></span></label></div>' +
           M.field('Package amount (USD)', '<input name="amount" type="number" min="' + S.minJoin + '" step="' + S.joinMultiple + '" required placeholder="' + S.currency + S.minJoin + ', ' + S.currency + (S.minJoin * 2) + ', ' + S.currency + (S.minJoin * 3) + '…">', 'Minimum ' + S.currency + S.minJoin + ', then in multiples of ' + S.currency + S.joinMultiple + ' (5, 10, 15, 20, 25…).') +
           '<div class="m-amts">' + quick.map(function (q) { return '<button type="button" class="mbtn line sm" data-amt="' + q + '">' + S.currency + q + '</button>'; }).join('') + '</div>' +
           '<ul class="m-kv sum" id="buySum"></ul>' +
@@ -114,37 +112,30 @@
       var f = document.getElementById('buyForm'), sum = document.getElementById('buySum');
       function calc() {
         var a = Number(f.amount.value) || 0, cap = Store.isWorking(me.id) ? S.capWorking : S.capNonWorking;
-        var comp = f.payout.value === 'compound';
         var x = window.Calc && a > 0 ? Calc.scenarios(a, S) : null;
-        sum.innerHTML = '<li><span>Type</span><b>' + (retopup ? 'Retopup' : 'Joining') + ' · Compounding (' + (comp ? 'keep compounding' : 'paid to wallet daily') + ')</b></li>' +
-          '<li><span>ROI per trading day (' + S.roiPct + '%)</span><b class="pos">+' + M.money(a * S.roiPct / 100) + (comp ? ' <small>(added to balance)</small>' : ' <small>(to income wallet)</small>') + '</b></li>' +
-          (x ? (comp ? '<li><span>After ' + x.cycle + ' days (compounded)</span><b class="pos">' + M.money(x.ciFinal) + '</b></li><li><span>After the cycle expires</span><b>' + M.money(x.ciAfterExpiry) + '</b></li>'
-            : '<li><span>Interest over ' + x.cycle + ' days</span><b class="pos">+' + M.money(x.siInterest) + '</b></li>') : '') +
+        sum.innerHTML = '<li><span>Type</span><b>' + (retopup ? 'Retopup' : 'Joining') + ' · Compounding</b></li>' +
+          '<li><span>ROI per trading day (' + S.roiPct + '%)</span><b class="pos">+' + M.money(a * S.roiPct / 100) + ' <small>(added to balance)</small></b></li>' +
+          (x ? '<li><span>After ' + x.cycle + ' days (compounded)</span><b class="pos">' + M.money(x.ciFinal) + '</b></li><li><span>After the cycle expires</span><b>' + M.money(x.ciAfterExpiry) + '</b></li>' : '') +
           '<li><span>New total invested</span><b>' + M.money((me.invested || 0) + a) + '</b></li>' +
           '<li class="tot"><span>Earning cap (' + cap + 'X)</span><b>' + M.money(((me.invested || 0) + a) * cap) + '</b></li>';
       }
       f.amount.oninput = calc; calc();
-      el.querySelectorAll('input[name=payout]').forEach(function (r) { r.onchange = calc; });
       el.querySelectorAll('[data-amt]').forEach(function (b) { b.onclick = function () { f.amount.value = b.dataset.amt; calc(); }; });
       f.onsubmit = function (e) {
         e.preventDefault();
-        var amount = Number(f.amount.value), src = f.src.value, payout = f.payout.value, al = document.getElementById('buyErr');
+        var amount = Number(f.amount.value), src = f.src.value, al = document.getElementById('buyErr');
         if (!amount || amount < S.minJoin) return M.alert(al, 'Minimum amount is ' + S.currency + S.minJoin + '.');
         if (Math.round(amount * 100) % Math.round(S.joinMultiple * 100) !== 0) return M.alert(al, 'Amount must be in multiples of ' + S.currency + S.joinMultiple + ' (5, 10, 15, 20…).');
         M.confirm('Confirm ' + (retopup ? 'retopup' : 'joining'), '<ul class="m-kv"><li><span>Amount</span><b>' + M.money(amount) + '</b></li>' +
           '<li><span>Pay from</span><b>' + (src === 'income' ? 'Income wallet (compounding)' : 'Purchase wallet') + '</b></li>' +
-          '<li><span>Daily income</span><b>' + (payout === 'compound' ? 'Keep compounding' : 'Transfer to income wallet') + '</b></li>' +
           '<li><span>ROI per trading day</span><b class="pos">+' + M.money(amount * S.roiPct / 100) + '</b></li></ul>', 'Continue').then(function (ok) {
           return ok ? M.askPin(me.id) : null;
         }).then(function (pin) {
           if (!pin) return null;
           return Store.purchasePackage(me.id, amount, src, pin, 'compound').then(function (r) {
             if (!r.ok) return M.alert(al, r.error);
-            var modeChange = payout !== payoutMode ? Store.setCompoundMode(payout, pin) : Promise.resolve({ ok: true });
-            return modeChange.then(function () {
-              M.toast('Package purchased: ' + M.money(amount));
-              M.go('/wallet/purchases');
-            });
+            M.toast('Package purchased: ' + M.money(amount));
+            M.go('/wallet/purchases');
           });
         });
       };
