@@ -60,6 +60,14 @@ class ClearTestDataCommand extends Command
                                                            // transfers, deductions, tickets, otps, kyc_submissions, compound_*
             DB::table('personal_access_tokens')->where('tokenable_type', User::class)->whereIn('tokenable_id', $deleteIds)->delete();
             DB::table('risk_alerts')->delete();           // fresh start: alerts about deleted test members would be noise
+            // the cascade above only removes a DELETED member's own rows — a kept account (the root / an admin)
+            // keeps its own ledger/wallet_ledger/deductions even when every row in them was caused by a test
+            // member who no longer exists (e.g. forfeited level income). Clear those too so the kept accounts'
+            // balances (reset to 0 below) and their transaction history agree, and the admin's Company Wallet
+            // page doesn't keep showing test-era charges after everything else has been wiped.
+            DB::table('ledger')->whereIn('user_id', $keepIds)->delete();
+            DB::table('wallet_ledger')->whereIn('user_id', $keepIds)->delete();
+            DB::table('deductions')->whereIn('user_id', $keepIds)->delete();
             User::whereIn('id', $keepIds)->update([
                 'invested' => 0, 'wallet' => 0, 'purchase_wallet' => 0, 'left_bv' => 0, 'right_bv' => 0,
                 'team_size' => 0, 'team_business' => 0, 'compound_through' => null,
