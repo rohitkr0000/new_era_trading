@@ -146,29 +146,30 @@
   M.page('/wallet/compounding', {
     title: 'Compounding',
     render: function (el, ctx) {
-      var S = ctx.S, C = Store.compound(), mode = C.mode === 'cash' ? 'cash' : 'compound', has = C.lots.length > 0 || C.schedule.length > 0;
+      var S = ctx.S, C = Store.compound(), has = C.lots.length > 0 || C.schedule.length > 0;
       var cycle = S.roiDays || 25, packages = C.packages || [];
       var STAT = { running: ['Running', 'info'], matured: ['Ready to decide', 'ok'], closed: ['Withdrawn', 'muted'] };
       el.innerHTML = '<div class="m-split wide-l">' +
         M.card('Compounding balance',
           '<div class="m-big-bal"><small>Live balance earning ' + S.roiPct + '% per trading day</small><b>' + M.money(C.balance) + '</b></div>' +
-          (has ? '<div class="m-alert ok" style="display:block">Today\'s income on this balance: <b>+' + M.money(C.balance * S.roiPct / 100) + '</b> — mode: <b>' + (mode === 'compound' ? 'keep compounding' : 'transfer to income wallet') + '</b> — ' +
-              (mode === 'compound' ? 'it gets added to the balance, so tomorrow\'s income is calculated on the bigger total.' : 'it is paid to your income wallet, so the balance (and tomorrow\'s income) stays the same.') + '</div>' +
-            '<div class="m-alert" hidden id="cmErr"></div>' +
-            '<div class="m-amts" style="margin-top:.6rem"><button class="mbtn ' + (mode === 'compound' ? 'gold' : 'line') + '" data-mode="compound">' + M.icon('trend') + 'Keep compounding</button>' +
-            '<button class="mbtn ' + (mode === 'cash' ? 'gold' : 'line') + '" data-mode="cash">' + M.icon('coins') + 'Transfer to income wallet</button></div>'
-            : '<p class="m-muted">You have no compounding balance yet. When you buy a package, choose <b>Compounding</b> as the interest type.</p>' +
-              '<a class="mbtn gold" href="#/wallet/purchase">' + M.icon('package') + 'Buy a compounding package</a>') +
-          '<p class="m-muted" style="font-size:.82rem;margin-bottom:0">Each package earns ' + cycle + ' trading days, then it matures — at that point you choose to withdraw it or start a new ' + cycle +
+          (!has ? '<p class="m-muted">You have no compounding balance yet. When you buy a package, choose <b>Compounding</b> as the interest type.</p>' +
+              '<a class="mbtn gold" href="#/wallet/purchase">' + M.icon('package') + 'Buy a compounding package</a>' : '') +
+          '<div class="m-alert" hidden id="cmErr"></div>' +
+          '<p class="m-muted" style="font-size:.82rem;margin-bottom:0">Each day\'s interest sits aside, undecided, for every package below — pick anytime whether to <b>transfer</b> it to your income wallet or <b>keep compounding</b> it into that package\'s own balance. ' +
+            'Each package earns ' + cycle + ' trading days, then it matures — at that point you choose to withdraw it or start a new ' + cycle +
             '-day cycle on it. You can also withdraw a package early, at whatever it has grown to so far (further growth for that cycle is then forfeited). No interest on Saturday and Sunday.</p>', { icon: 'trend' }) +
         M.card('Your compounding packages', packages.length ? '<ul class="m-kv" id="cmPkgs">' + packages.map(function (p) {
           var st = STAT[p.status] || ['—', 'muted'];
           var actions = '';
-          if (p.status === 'running' && p.value > p.amount) actions = '<button class="mbtn line sm" data-wd="' + p.orderId + '">' + M.icon('coins') + 'Withdraw now</button>';
+          if (p.status === 'running' && (p.value > p.amount || p.pendingInterest > 0)) actions = '<button class="mbtn line sm" data-wd="' + p.orderId + '">' + M.icon('coins') + 'Withdraw now</button>';
           else if (p.status === 'matured') actions = (p.value > p.amount ? '<button class="mbtn gold sm" data-wd="' + p.orderId + '">' + M.icon('coins') + 'Withdraw</button>' : '') +
             '<button class="mbtn line sm" data-rc="' + p.orderId + '">' + M.icon('trend') + 'Re-compound</button>';
+          var interestRow = p.status === 'running' ? '<div style="flex:0 0 100%;margin-top:.4rem;padding-top:.4rem;border-top:1px dashed var(--line);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem">' +
+            '<span class="m-muted" style="font-size:.82rem">Interest earned, not yet decided <b class="pos">+' + M.money(p.pendingInterest) + '</b></span>' +
+            (p.pendingInterest > 0 ? '<span style="display:flex;gap:.4rem"><button class="mbtn gold sm" data-xfer="' + p.orderId + '">' + M.icon('coins') + 'Transfer to income wallet</button>' +
+              '<button class="mbtn line sm" data-fold="' + p.orderId + '">' + M.icon('trend') + 'Keep compounding</button></span>' : '') + '</div>' : '';
           return '<li style="flex-wrap:wrap"><span><code>' + M.esc(p.ref) + '</code> <small class="m-muted">bought ' + M.date(p.date) + ' · ' + p.paidDays + '/' + p.days + ' days · ' + M.badge(st[0], st[1]) + '</small></span>' +
-            '<b>' + M.money(p.value) + '</b>' + (actions ? '<div style="flex:0 0 100%;margin-top:.4rem;display:flex;gap:.4rem">' + actions + '</div>' : '') + '</li>';
+            '<b>' + M.money(p.value) + '</b>' + (actions ? '<div style="flex:0 0 100%;margin-top:.4rem;display:flex;gap:.4rem">' + actions + '</div>' : '') + interestRow + '</li>';
         }).join('') + '</ul>' : '<p class="m-muted">Buy a compounding package to see it listed here.</p>', { icon: 'package' }) +
         M.card('Live amounts', C.lots.length ? '<ul class="m-kv">' + C.lots.map(function (l) {
           return '<li><span>' + (l.principal ? 'Purchased amount' : 'Interest of ' + M.esc(l.since)) + ' <small class="m-muted">· ' + l.daysLeft + ' day' + (l.daysLeft === 1 ? '' : 's') + ' left</small></span><b>' + M.money(l.amount) + '</b></li>';
@@ -176,15 +177,20 @@
         '</div>' +
         M.card('Daily schedule', '<div id="cmT"></div>', { icon: 'list', sub: 'Opening + interest − matured = closing, newest first' });
 
-      el.querySelectorAll('[data-mode]').forEach(function (b) {
+      el.querySelectorAll('[data-xfer],[data-fold]').forEach(function (b) {
         b.onclick = function () {
-          if ((b.dataset.mode === 'cash') === (mode === 'cash')) return;
+          var orderId = b.dataset.xfer || b.dataset.fold, action = b.dataset.xfer ? 'transfer' : 'compound';
+          var pkg = packages.filter(function (p) { return String(p.orderId) === orderId; })[0];
           var al = document.getElementById('cmErr');
-          M.askPin(ctx.me.id).then(function (pin) {
+          var msg = action === 'transfer' ? '<p><b>' + M.money(pkg ? pkg.pendingInterest : 0) + '</b> will be paid to your income wallet.</p>'
+            : '<p><b>' + M.money(pkg ? pkg.pendingInterest : 0) + '</b> will be added to this package\'s balance, so tomorrow\'s interest is calculated on the bigger total.</p>';
+          M.confirm(action === 'transfer' ? 'Transfer to income wallet' : 'Keep compounding', msg, 'Confirm').then(function (ok) {
+            return ok ? M.askPin(ctx.me.id) : null;
+          }).then(function (pin) {
             if (!pin) return null;
-            return Store.setCompoundMode(b.dataset.mode, pin).then(function (r) {
+            return Store.decideCompoundInterest(orderId, action, pin).then(function (r) {
               if (!r.ok) return M.alert(al, r.error);
-              M.toast(b.dataset.mode === 'cash' ? 'The daily interest will now be paid to your income wallet' : 'The daily interest will now be added to your balance');
+              M.toast(action === 'transfer' ? 'Transferred ' + M.money(r.amount) + ' to your income wallet' : 'Added ' + M.money(r.amount) + ' to the package balance');
               ctx.refresh();
             });
           });
@@ -194,7 +200,7 @@
         b.onclick = function () {
           var orderId = b.dataset.wd, pkg = packages.filter(function (p) { return String(p.orderId) === orderId; })[0];
           var early = pkg && pkg.status === 'running';
-          var growth = pkg ? Math.max(0, pkg.value - pkg.amount) : 0;
+          var growth = pkg ? Math.max(0, (pkg.value + (pkg.pendingInterest || 0)) - pkg.amount) : 0;
           M.confirm('Withdraw this package', '<p>You will receive <b>' + M.money(growth) + '</b> in your income wallet — the growth above your original ' + M.money(pkg ? pkg.amount : 0) + ' investment; the principal itself is not paid out' +
             (early ? ', and the package stops compounding, so it will not earn the rest of its 25-day cycle.' : '.') + '</p>', 'Withdraw').then(function (ok) {
             return ok ? M.askPin(ctx.me.id) : null;
@@ -228,7 +234,7 @@
         columns: [
           { key: 'day', label: 'Day', render: function (r) { return M.esc(r.day); } },
           { key: 'opening', label: 'Opening', align: 'r', render: function (r) { return M.money(r.opening); } },
-          { key: 'interest', label: 'Interest', align: 'r', render: function (r) { return '<b class="pos">+' + M.money(r.interest) + '</b> <small class="m-muted">' + (r.mode === 'cash' ? 'paid' : 'added') + '</small>'; } },
+          { key: 'interest', label: 'Interest', align: 'r', render: function (r) { return '<b class="pos">+' + M.money(r.interest) + '</b> <small class="m-muted">accrued</small>'; } },
           { key: 'expiring', label: 'Matured', align: 'r', render: function (r) { return r.expiring > 0 ? '<span>' + M.money(r.expiring) + '</span>' : '—'; } },
           { key: 'closing', label: 'Closing', align: 'r', render: function (r) { return M.money(r.closing); } }
         ]

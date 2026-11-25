@@ -134,7 +134,7 @@
       kv([['E-mail', esc(u.email) + ' ' + yn(u.emailVerified, 'verified', 'not verified')], ['Phone', esc(u.phone || '—')], ['Country / city', esc([u.country, u.city].filter(Boolean).join(' / ') || '—')],
         ['KYC', UI.badge(u.kyc, u.kyc === 'approved' ? 'green' : u.kyc === 'rejected' ? 'red' : 'amber') + ' <a href="kyc.html" class="small">Review documents →</a>'], ['Transaction PIN', yn(u.hasPin, 'set', 'not set')], ['Payout wallet', esc(u.usdtAddress || '—')],
         ['Sponsor', u.sponsor ? '<a href="#" data-member="' + u.sponsor.id + '">' + esc(u.sponsor.name) + ' · ' + esc(u.sponsor.code) + '</a>' : '—'],
-        ['Joined', dt(u.joined)], ['Last sign-in', dt(u.lastLogin)], ['Last sign-in IP', esc(u.lastLoginIp || '—')], ['Compounding', esc(u.compoundMode || '—')], ['Active sessions', u.sessions]]) +
+        ['Joined', dt(u.joined)], ['Last sign-in', dt(u.lastLogin)], ['Last sign-in IP', esc(u.lastLoginIp || '—')], ['Active sessions', u.sessions]]) +
       '<div class="subhead">Earning cap</div>' + capBlock(c, d.income.total) +
       '<div class="subhead">Admin: account &amp; security</div>' + credBlock(u);
 

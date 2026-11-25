@@ -165,15 +165,15 @@ class MemberController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    /** Compounding balance: keep compounding, or withdraw the daily interest as cash. */
-    public function compoundMode(Request $request, CompoundService $compound): JsonResponse
+    /** One compounding package's accumulated pending interest: transfer it to the income wallet, or fold it into the principal. */
+    public function compoundDecideInterest(Request $request, CompoundService $compound, int $orderId): JsonResponse
     {
         $u = $this->member($request);
-        $d = $request->validate(['mode' => 'required|in:compound,cash', 'pin' => 'required']);
+        $d = $request->validate(['action' => 'required|in:transfer,compound', 'pin' => 'required']);
         $this->checkPin($request);
-        $compound->setMode($u, $d['mode']);
-        Audit::log('compound.mode', $u, null, ['mode' => $d['mode']]);
-        return response()->json(['ok' => true, 'mode' => $d['mode']]);
+        $r = $compound->decideInterest($u->id, $orderId, $d['action']);
+        Audit::log('compound.decide', $u, 'order#' . $orderId, ['action' => $d['action'], 'amount' => $r['amount']]);
+        return response()->json(['ok' => true] + $r);
     }
 
     /** Cash out one compounding package now — early (at its current value) or, once matured, its frozen total. */

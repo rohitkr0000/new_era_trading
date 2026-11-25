@@ -354,68 +354,120 @@ try {
     throws('a withdrawal code cannot be used for a transfer (purposes are separate)', fn () => $otp->verify($O2, 'transfer', $c3, OtpService::context('wd', '10.00', 'USDT', '0xabc')), 'Request a verification code first');
     throws('a withdrawal code for another address is refused', fn () => $otp->verify($O2, 'withdraw', $c3, OtpService::context('wd', '10.00', 'USDT', '0xDIFFERENT')), 'different request');
 
-    section('Compounding — the spreadsheet, day by day ($100, 5% a day, 25-day cycle)');
+    section('Compounding — interest piles up as "pending_interest", undecided, until the member transfers or folds it in');
     $comp = app(\App\Services\CompoundService::class);
     $runDays = function (string $from, string $to) use ($comp) {   // one scheduler run per calendar day, at 12:00 IST
         for ($d = Carbon::parse($from, 'UTC'); $d->lte(Carbon::parse($to, 'UTC')); $d = $d->copy()->addDay()) { at($d->format('Y-m-d') . ' 06:30:00'); $comp->accrue(); }
     };
     at('2026-11-16 06:30:00');                                  // Monday = purchase day
-    $CA = $mk('cmpa', null, null); $CB = $mk('cmpb', null, null); $CC = $mk('cmpc', null, null);
+    $CA = $mk('cmpa', null, null); $CB = $mk('cmpb', null, null);
     foreach ([$CA, $CB] as $m) $plan->invest($m->id, 100, 'Compounding');
-    $plan->invest($CC->id, 10, 'Compounding');
+    $orderA = DB::table('orders')->where('user_id', $CA->id)->where('option', 'Compounding')->first();
+    $orderB = DB::table('orders')->where('user_id', $CB->id)->where('option', 'Compounding')->first();
     eq('a compounding package is a lot, not cash ROI', DB::table('compound_lots')->where('user_id', $CA->id)->count(), 1);
-    eq('its order is ref CMP-…', str_starts_with(DB::table('orders')->where('user_id', $CA->id)->value('ref'), 'CMP-'), true);
+    eq('its order is ref CMP-…', str_starts_with($orderA->ref, 'CMP-'), true);
     $comp->accrue();
     eq('the purchase day itself earns nothing', DB::table('compound_ledger')->where('user_id', $CA->id)->count(), 0);
     $beforeAcc = DB::table('ledger')->where('user_id', $CA->id)->where('type', 'roi')->count();
     $plan->accrue();
     eq('the simple-interest job skips compounding packages', DB::table('ledger')->where('user_id', $CA->id)->where('type', 'roi')->count(), $beforeAcc);
+
     $runDays('2026-11-17', '2026-11-17');                        // Tuesday = day 1
     $r1 = DB::table('compound_ledger')->where('user_id', $CA->id)->orderBy('day')->first();
-    check('day 1: $100 -> +$5.00 -> $105.00', Money::r($r1->opening) === '100.00' && Money::r($r1->interest) === '5.00' && Money::r($r1->closing) === '105.00', json_encode($r1));
-    $runDays('2026-11-18', '2026-11-18');
+    check('day 1: $100 opening, +$5.00 interest — it does NOT auto-fold, so the base (closing) is unchanged', Money::r($r1->opening) === '100.00' && Money::r($r1->interest) === '5.00' && Money::r($r1->closing) === '100.00', json_encode($r1));
+    eq('…it just sits as this order\'s pending_interest', Money::r(DB::table('orders')->where('id', $orderA->id)->value('pending_interest')), '5.00');
+    eq('…and the principal lot itself has not moved', Money::r(DB::table('compound_lots')->where('order_id', $orderA->id)->where('days_left', '>', 0)->value('amount')), '100.00');
+
+    throws('decideInterest refuses an unknown action', fn () => $comp->decideInterest($CA->id, $orderA->id, 'nonsense'), 'transfer to income wallet');
+    $comp->decideInterest($CA->id, $orderA->id, 'compound');
+    eq('"compound" folds the pending interest into the principal lot', Money::r(DB::table('compound_lots')->where('order_id', $orderA->id)->where('days_left', '>', 0)->value('amount')), '105.00');
+    eq('…and the pending bucket resets to 0', Money::r(DB::table('orders')->where('id', $orderA->id)->value('pending_interest')), '0.00');
+    throws('nothing left to decide on right after folding', fn () => $comp->decideInterest($CA->id, $orderA->id, 'compound'), 'No interest has accumulated');
+
+    $runDays('2026-11-18', '2026-11-18');                        // day 2 — interest now compounds on the bigger $105 base
     $r2 = DB::table('compound_ledger')->where('user_id', $CA->id)->orderBy('day')->get()[1];
-    check('day 2: $105 -> +$5.25 -> $110.25', Money::r($r2->interest) === '5.25' && Money::r($r2->closing) === '110.25', json_encode($r2));
-    $runDays('2026-11-19', '2026-11-19');
+    check('day 2: $105 base -> +$5.25 interest', Money::r($r2->opening) === '105.00' && Money::r($r2->interest) === '5.25', json_encode($r2));
+    $beforeWallet = Money::r(User::find($CA->id)->wallet);
+    $xr = $comp->decideInterest($CA->id, $orderA->id, 'transfer');
+    eq('"transfer" pays the $5.25 pending interest to the income wallet', $xr['amount'], '5.25');
+    eq('wallet increased by exactly that', Money::r(User::find($CA->id)->fresh()->wallet), Money::add($beforeWallet, '5.25'));
+    eq('the principal lot is unaffected by a transfer', Money::r(DB::table('compound_lots')->where('order_id', $orderA->id)->where('days_left', '>', 0)->value('amount')), '105.00');
+
+    $runDays('2026-11-19', '2026-11-19');                        // day 3 — base is still $105 (last decision was "transfer", not "compound")
     $r3 = DB::table('compound_ledger')->where('user_id', $CA->id)->orderBy('day')->get()[2];
-    check('day 3: $110.25 -> +$5.51 -> $115.76 (the sheet shows 5.51 / 115.76)', Money::r($r3->interest) === '5.51' && Money::r($r3->closing) === '115.76', json_encode($r3));
-    $runDays('2026-11-20', '2026-11-20');
+    check('day 3: base still $105 -> +$5.25 again (a transfer does not grow the base)', Money::r($r3->opening) === '105.00' && Money::r($r3->interest) === '5.25', json_encode($r3));
+
+    $runDays('2026-11-20', '2026-11-20');                        // day 4 (Friday) — left undecided, piles onto day 3's pending
+    eq('day 3 + day 4 pending interest piles up together: $5.25 + $5.25 = $10.50', Money::r(DB::table('orders')->where('id', $orderA->id)->value('pending_interest')), '10.50');
+
     $before = DB::table('compound_ledger')->where('user_id', $CA->id)->count();
     $runDays('2026-11-21', '2026-11-22');                        // Saturday + Sunday
     eq('Saturday and Sunday: no interest is calculated', DB::table('compound_ledger')->where('user_id', $CA->id)->count(), $before);
-    eq('...and the lots did not age', (int) DB::table('compound_lots')->where('user_id', $CA->id)->where('is_principal', 1)->value('days_left'), 21);
+    eq('...and the lot did not age', (int) DB::table('compound_lots')->where('order_id', $orderA->id)->where('days_left', '>', 0)->value('days_left'), 21);
+    eq('…nor did the weekend touch the still-undecided pending interest', Money::r(DB::table('orders')->where('id', $orderA->id)->value('pending_interest')), '10.50');
+
+    // leave day 3's $5.25 undecided and run all the way to maturity — nothing is lost, it just gets swept in
     $runDays('2026-11-23', '2026-12-21');                        // through trading day 25 (Monday 21 Dec)
     $rows = DB::table('compound_ledger')->where('user_id', $CA->id)->orderBy('day')->get();
     eq('25 trading days were processed', $rows->count(), 25);
-    $orderA = DB::table('orders')->where('user_id', $CA->id)->where('option', 'Compounding')->first();
+    $orderA = DB::table('orders')->where('id', $orderA->id)->first();
     eq('day 25: the order matures instead of silently expiring', $orderA->status, 'matured');
-    check('the matured total is the full compounded $338.64 — nothing is lost', abs((float) $orderA->matured_balance - 338.64) <= 0.1, 'matured ' . $orderA->matured_balance);
-    eq('compounded interest is NOT income: nothing reached the income wallet', Money::r(User::find($CA->id)->wallet), '0.00');
+    check('matured = $105 base + 23 more flat $5.25 days (3..25) = $225.75 — nothing lost', abs((float) $orderA->matured_balance - 225.75) < 0.01, 'matured ' . $orderA->matured_balance);
+    eq('…pending_interest was swept in, so it is back to 0', Money::r($orderA->pending_interest), '0.00');
+    eq('only the one earlier $5.25 transfer ever reached the income wallet', Money::r(User::find($CA->id)->wallet), '5.25');
     eq('balance() still reports the matured total (it moved, it did not vanish)', $comp->balance($CA->id), Money::r($orderA->matured_balance));
     $again = $comp->accrue();
     eq('running the job again for the same day does nothing (idempotent)', $again, 0);
 
-    // member A: matured — re-compound its frozen total into a fresh 25-day cycle, in cash mode this time
-    $comp->setMode(User::find($CA->id), 'cash');
+    // member A: matured — re-compound its frozen total into a fresh 25-day cycle
     $rc = $comp->recompound($CA->id, $orderA->id);
     check('re-compound starts a new cycle from the matured total', abs($rc['principal'] - (float) $orderA->matured_balance) < 0.01, json_encode($rc));
     eq('the order runs again', DB::table('orders')->where('id', $orderA->id)->value('status'), 'running');
+    eq('…with its pending interest reset', Money::r(DB::table('orders')->where('id', $orderA->id)->value('pending_interest')), '0.00');
     throws('a running order cannot be re-compounded again', fn () => $comp->recompound($CA->id, $orderA->id), 'not ready to re-compound');
 
-    // member B: matured too — re-compound (no mode switch) at the SAME moment as A, before the clock moves on
-    $orderB = DB::table('orders')->where('user_id', $CB->id)->where('option', 'Compounding')->first();
+    // member B: matured too, having never acted at all — interest just piles up flat (5% of the original $100, every trading day)
+    $orderB = DB::table('orders')->where('id', $orderB->id)->first();
     eq('member B also matured at day 25 (every order matures on its own)', $orderB->status, 'matured');
+    check('member B never folded or transferred: matured = $100 + 25 x flat $5.00 = $225.00', abs((float) $orderB->matured_balance - 225.00) < 0.01, json_encode($orderB));
+    eq('member B has earned no cash at all — nothing was ever transferred', Money::r(User::find($CB->id)->wallet), '0.00');
     $comp->recompound($CB->id, $orderB->id);
 
-    $runDays('2026-12-22', '2027-01-25');                        // 25 more trading days for both new cycles at once
+    // run a date range, deciding one or more orders' pending interest the same way every day it has accrued
+    $runAndDecide = function (string $from, string $to, array $decisions) use ($comp) {
+        for ($d = Carbon::parse($from, 'UTC'); $d->lte(Carbon::parse($to, 'UTC')); $d = $d->copy()->addDay()) {
+            at($d->format('Y-m-d') . ' 06:30:00');
+            $comp->accrue();
+            foreach ($decisions as $dec) {
+                [$userId, $orderId, $action] = $dec;
+                $o = DB::table('orders')->where('id', $orderId)->first();
+                if ($o && $o->status === 'running' && Money::pos($o->pending_interest)) $comp->decideInterest($userId, $orderId, $action);
+            }
+        }
+    };
+
+    // member A's new cycle: transfer every day's interest instead of folding — the cap still trims what gets paid out.
+    // member B's new cycle: fold every day instead — true compounding, same growth curve "cash mode" never had.
+    $runAndDecide('2026-12-22', '2027-01-25', [[$CA->id, $orderA->id, 'transfer'], [$CB->id, $orderB->id, 'compound']]);   // 25 more trading days
     $cashA = round((float) DB::table('ledger')->where('user_id', $CA->id)->where('type', 'roi')->sum('amount'), 2);
-    check('cash paid on the re-compounded cycle stays within the 2X cap of $200', $cashA > 0 && $cashA <= 200.0, 'cash ' . $cashA);
+    check('repeatedly transferring stays within the 2X cap of $200', $cashA > 0 && $cashA <= 200.0, 'cash ' . $cashA);
+    $orderA2 = DB::table('orders')->where('id', $orderA->id)->first();
+    eq('the second cycle matures too, right on schedule', $orderA2->status, 'matured');
+    check('…but the base never grew (every day was transferred, not folded): $225.75 + one final undecided $11.29 day', abs((float) $orderA2->matured_balance - 237.04) < 0.01, json_encode($orderA2));
+
     $orderB2 = DB::table('orders')->where('id', $orderB->id)->first();
-    check('member B keeps compounding: ~$338.64 x 1.05^25 matures near $1146.8', $orderB2->status === 'matured' && abs((float) $orderB2->matured_balance - 1146.8) <= 8, json_encode($orderB2));
+    check('member B keeps compounding by folding every day: ~$225 x 1.05^25 matures near $762', $orderB2->status === 'matured' && abs((float) $orderB2->matured_balance - 762.0) <= 5, json_encode($orderB2));
     eq('member B has still earned no cash', Money::r(User::find($CB->id)->wallet), '0.00');
 
-    // member C: $10 package also matured (~$33.86); withdrawing it never pays the $10 principal — only growth, capped
+    // member C: $10 package, folded every trading day (replicating always-compound growth) -> matures ~$33.86;
+    // withdrawing it shows the cap still only trims the GROWTH, never the principal
+    $cWeek = Carbon::parse($MON)->addWeeks(20);
+    at($cWeek->format('Y-m-d') . ' 06:30:00');
+    $CC = $mk('cmpc', null, null);
+    $plan->invest($CC->id, 10, 'Compounding');
     $orderC = DB::table('orders')->where('user_id', $CC->id)->where('option', 'Compounding')->first();
+    $runAndDecide($cWeek->copy()->addDay()->toDateString(), $cWeek->copy()->addDays(40)->toDateString(), [[$CC->id, $orderC->id, 'compound']]);
+    $orderC = DB::table('orders')->where('id', $orderC->id)->first();
     check('member C: $10 compounded 25 days -> ~$33.86 (10 x 1.05^25)', $orderC->status === 'matured' && abs((float) $orderC->matured_balance - 33.86) <= 0.3, json_encode($orderC));
     $wdC = $comp->withdrawOrder($CC->id, $orderC->id);
     check('growth beyond the $10 principal (~$23.86) is trimmed to the 2X cap ($20)', abs($wdC['growthCredited'] - 20.0) < 0.01, json_encode($wdC));

@@ -209,8 +209,7 @@ class Snapshot
         return [
             'mode' => 'member',
             'demoLogins' => config('app.demo_mode') ? config('app.demo_logins') : null,
-            'me' => ['id' => $me->id, 'role' => 'member', 'hasPin' => (bool) $me->txn_pin, 'emailVerified' => (bool) $me->email_verified_at, 'kyc' => $me->kyc_status ?: 'none', 'kycNote' => $me->kyc_note,
-                'compoundMode' => $me->compound_mode ?: 'compound'],
+            'me' => ['id' => $me->id, 'role' => 'member', 'hasPin' => (bool) $me->txn_pin, 'emailVerified' => (bool) $me->email_verified_at, 'kyc' => $me->kyc_status ?: 'none', 'kycNote' => $me->kyc_note],
             'demo' => (bool) config('app.demo_mode'),
             'settings' => Settings::all(),
             'db' => [
@@ -291,12 +290,11 @@ class Snapshot
         $orders = DB::table('orders')->where('user_id', $me->id)->where('option', 'Compounding')->orderByDesc('id')->get();
         $liveByOrder = $lots->groupBy(fn ($l) => (string) $l->order_id);
         return [
-            'mode' => $me->compound_mode ?: 'compound',
             'balance' => self::num($lots->sum('amount') + $orders->whereNotNull('matured_balance')->sum('matured_balance')),
             'lots' => $lots->map(fn ($l) => ['id' => $l->id, 'orderId' => $l->order_id, 'amount' => self::num($l->amount), 'principal' => (bool) $l->is_principal, 'daysLeft' => (int) $l->days_left, 'since' => $l->created_on])->values()->all(),
-            'schedule' => $sched->map(fn ($r) => ['day' => $r->day, 'mode' => $r->mode, 'opening' => self::num($r->opening), 'interest' => self::num($r->interest), 'expiring' => self::num($r->expiring), 'closing' => self::num($r->closing)])->values()->all(),
+            'schedule' => $sched->map(fn ($r) => ['day' => $r->day, 'opening' => self::num($r->opening), 'interest' => self::num($r->interest), 'expiring' => self::num($r->expiring), 'closing' => self::num($r->closing)])->values()->all(),
             'packages' => $orders->map(fn ($o) => ['orderId' => $o->id, 'ref' => $o->ref, 'amount' => self::num($o->amount), 'status' => $o->status,
-                'paidDays' => (int) $o->paid_days, 'days' => (int) $o->days, 'date' => self::ms($o->created_at),
+                'paidDays' => (int) $o->paid_days, 'days' => (int) $o->days, 'date' => self::ms($o->created_at), 'pendingInterest' => self::num($o->pending_interest),
                 'value' => $o->status === 'matured' ? self::num($o->matured_balance) : self::num(($liveByOrder[(string) $o->id] ?? collect())->sum('amount'))])->values()->all(),
         ];
     }

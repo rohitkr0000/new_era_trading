@@ -264,7 +264,7 @@ class RiskController extends Controller
             'member' => [
                 'id' => $u->id, 'code' => $u->code, 'name' => $u->name, 'email' => $u->email, 'phone' => $u->phone, 'country' => $u->country, 'city' => $u->city, 'usdtAddress' => $u->usdt_address,
                 'blocked' => (bool) $u->blocked, 'emailVerified' => (bool) $u->email_verified_at, 'hasPin' => (bool) $u->txn_pin, 'kyc' => $u->kyc_status ?: 'none',
-                'joined' => Snapshot::ms($u->joined_at), 'lastLogin' => Snapshot::ms($u->last_login_at), 'lastLoginIp' => $u->last_login_ip, 'compoundMode' => $u->compound_mode,
+                'joined' => Snapshot::ms($u->joined_at), 'lastLogin' => Snapshot::ms($u->last_login_at), 'lastLoginIp' => $u->last_login_ip,
                 'sponsor' => $sponsor ? ['id' => $sponsor->id, 'name' => $sponsor->name, 'code' => $sponsor->code] : null,
                 'invested' => self::n($u->invested), 'wallet' => self::n($u->wallet), 'purchaseWallet' => self::n($u->purchase_wallet), 'sessions' => $u->tokens()->count(),
             ],
