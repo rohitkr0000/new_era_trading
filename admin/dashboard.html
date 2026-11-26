@@ -35,7 +35,7 @@
   var me = Layout.mount();
   if (me) {
     var db = Store.db, mem = Store.members();
-    var revenue = db.orders.reduce(function (s, o) { return s + o.amount; }, 0);
+    var revenue = mem.reduce(function (s, u) { return s + (u.invested || 0); }, 0);
     var paid = db.tx.filter(function (t) { return t.amount > 0 && Store.INCOME_TYPES.indexOf(t.type) > -1; })
       .reduce(function (s, t) { return s + t.amount; }, 0);
     var pend = db.withdrawals.filter(function (w) { return w.status === 'pending'; });

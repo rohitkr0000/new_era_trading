@@ -68,6 +68,11 @@ class ClearTestDataCommand extends Command
             DB::table('ledger')->whereIn('user_id', $keepIds)->delete();
             DB::table('wallet_ledger')->whereIn('user_id', $keepIds)->delete();
             DB::table('deductions')->whereIn('user_id', $keepIds)->delete();
+            // same reason: a package a kept account bought while testing left its own order sitting there —
+            // invested resets to 0 below, but the order's amount would keep inflating "package revenue" forever.
+            $keptOrderIds = DB::table('orders')->whereIn('user_id', $keepIds)->pluck('id');
+            DB::table('compound_lots')->whereIn('order_id', $keptOrderIds)->delete();
+            DB::table('orders')->whereIn('id', $keptOrderIds)->delete();
             User::whereIn('id', $keepIds)->update([
                 'invested' => 0, 'wallet' => 0, 'purchase_wallet' => 0, 'left_bv' => 0, 'right_bv' => 0,
                 'team_size' => 0, 'team_business' => 0, 'compound_through' => null,
