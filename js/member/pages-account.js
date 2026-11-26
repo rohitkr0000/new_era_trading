@@ -19,7 +19,7 @@
           '<div class="span2"><button class="mbtn gold" type="submit">' + M.icon('check') + 'Save changes</button></div></form>', { icon: 'user' }) +
         M.card('Account summary', '<div class="m-profile"><span class="m-av xl">' + M.esc(UI.initials(me.name)) + '</span><b>' + M.esc(me.name) + '</b><small>' + M.esc(me.code) + ' · #' + Store.positions(me.id).team.pos + ' by team · #' + Store.positions(me.id).business.pos + ' by business</small></div>' +
           '<ul class="m-kv"><li><span>Status</span>' + M.badge(me.invested > 0 ? 'Active' : 'Inactive') + '</li><li><span>Invested</span><b>' + M.money(me.invested || 0) + '</b></li><li><span>Earning cap</span><b>' + Store.capInfo(me.id).mult + 'X · ' + (Store.isWorking(me.id) ? 'working' : 'non-working') + '</b></li>' +
-          '<li><span>Sponsor</span><b>' + (sp ? M.esc(sp.name) + ' · ' + M.esc(sp.code) : 'Company') + '</b></li><li><span>Placement</span><b>' + (me.parentId ? M.esc(Store.byId(me.parentId).name) + ' · ' + me.leg : 'Top of tree') + '</b></li>' +
+          '<li><span>Sponsor</span><b>' + (sp ? M.esc(sp.name) + ' · ' + M.esc(sp.code) : 'Company') + '</b></li>' +
           '<li><span>Joined</span><b>' + M.date(me.joined) + '</b></li><li><span>Transaction PIN</span>' + (Store.hasPin(me.id) ? M.badge('Set', 'ok') : '<a href="#/account/pin">' + M.badge('Not set', 'warn') + '</a>') + '</li></ul>', { icon: 'shield' }) +
         '</div>';
       document.getElementById('prForm').onsubmit = function (e) {
