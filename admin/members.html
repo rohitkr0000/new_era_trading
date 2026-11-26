@@ -12,7 +12,9 @@
 </head>
 <body data-role="admin" data-page="members" data-title="Members" data-base="../">
 <main id="page-content" hidden>
-  <div class="card">
+  <section class="grid grid-4" id="stats"></section>
+
+  <div class="card mt">
     <div class="toolbar">
       <div class="field"><label for="q">Search</label><input id="q" placeholder="Name, email or code"></div>
       <div class="field"><label for="st">Status</label>
@@ -40,7 +42,23 @@
       });
     }
     function openProfile(id) { if (window.AdminRisk) window.AdminRisk.openMember(id); else UI.toast('Still loading, try again in a second', 'err'); }
+    function drawStats() {
+      var all = Store.members();
+      var blocked = all.filter(function (u) { return u.blocked; });
+      var active = all.filter(function (u) { return Store.isActive(u); });
+      var inactive = all.filter(function (u) { return !u.blocked && !Store.isActive(u); });
+      var tiles = [
+        ['✅', active.length, 'Active'],
+        ['💤', inactive.length, 'Inactive'],
+        ['⛔', blocked.length, 'Blocked'],
+        ['👥', all.length, 'Total members']
+      ];
+      $('stats').innerHTML = tiles.map(function (x) {
+        return '<div class="card stat"><div class="stat-ico">' + x[0] + '</div><div><b>' + x[1] + '</b><span>' + x[2] + '</span></div></div>';
+      }).join('');
+    }
     function draw() {
+      drawStats();
       var q = $('q').value.toLowerCase(), st = $('st').value, pk = $('pk').value;
       var list = Store.members().filter(function (u) {
         if (q && (u.name + u.email + u.code).toLowerCase().indexOf(q) < 0) return false;

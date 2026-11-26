@@ -12,7 +12,9 @@
 </head>
 <body data-role="admin" data-page="payouts" data-title="Withdrawal Requests" data-base="../">
 <main id="page-content" hidden>
-  <div class="card">
+  <section class="grid grid-4" id="stats"></section>
+
+  <div class="card mt">
     <div class="card-head">
       <h3>Requests</h3>
       <select id="filter" style="max-width:180px"><option value="pending">Pending</option><option value="">All</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select>
@@ -28,7 +30,23 @@
   var me = Layout.mount();
   if (me) {
     var kind = { pending: 'amber', approved: 'green', rejected: 'red' };
+    function drawStats() {
+      var all = Store.db.withdrawals;
+      var byStatus = function (st) { return all.filter(function (w) { return w.status === st; }); };
+      var approved = byStatus('approved'), pending = byStatus('pending'), rejected = byStatus('rejected');
+      var sum = function (rows, key) { return rows.reduce(function (s, w) { return s + w[key]; }, 0); };
+      var tiles = [
+        ['✅', UI.money(sum(approved, 'net')), 'Paid out (' + approved.length + ')'],
+        ['⏳', UI.money(sum(pending, 'amount')), 'Pending (' + pending.length + ')'],
+        ['❌', UI.money(sum(rejected, 'amount')), 'Rejected (' + rejected.length + ')'],
+        ['📤', UI.money(sum(all, 'amount')), 'All requests (' + all.length + ')']
+      ];
+      document.getElementById('stats').innerHTML = tiles.map(function (x) {
+        return '<div class="card stat"><div class="stat-ico">' + x[0] + '</div><div><b>' + x[1] + '</b><span>' + x[2] + '</span></div></div>';
+      }).join('');
+    }
     function draw() {
+      drawStats();
       var f = document.getElementById('filter').value;
       var list = Store.db.withdrawals.filter(function (w) { return !f || w.status === f; }).sort(function (a, b) { return b.date - a.date; });
       document.getElementById('list').innerHTML = UI.table(['Date', 'Member', 'Method / account', 'Amount', 'Net payout', 'Status', 'Payout hash', ''],
