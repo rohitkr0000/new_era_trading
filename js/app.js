@@ -129,7 +129,7 @@
       document.getElementById('scrim').addEventListener('click', toggle);
       document.getElementById('logoutBtn').addEventListener('click', function () { Store.logout(); location.href = base + 'login.html'; });
       if (role === 'admin') {   // member profiles + suspicious-activity alerts + popup (loaded on every admin page)
-        var rs = document.createElement('script'); rs.src = base + 'js/admin-risk.js';
+        var rs = document.createElement('script'); rs.src = base + 'js/admin-risk.js?t=' + Date.now();
         rs.onload = function () { if (global.AdminRisk) global.AdminRisk.watch(); };
         document.body.appendChild(rs);
       }
