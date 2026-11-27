@@ -61,6 +61,7 @@ Route::middleware(['auth:sanctum', 'throttle:user', 'forget.snapshot'])->group(f
         Route::put('/members/{id}/contact', [RiskController::class, 'updateContact'])->whereNumber('id')->middleware('throttle:admin-action');
         Route::post('/members/{id}/password', [RiskController::class, 'resetPassword'])->whereNumber('id')->middleware('throttle:admin-action');
         Route::post('/members/{id}/pin', [RiskController::class, 'resetPin'])->whereNumber('id')->middleware('throttle:admin-action');
+        Route::post('/members/{id}/impersonate', [AdminController::class, 'impersonate'])->whereNumber('id')->middleware('throttle:admin-action');
         Route::put('/members/{id}/sponsor', [RiskController::class, 'updateSponsor'])->whereNumber('id')->middleware('throttle:admin-action');
         Route::post('/orders/{orderId}/fast-forward', [RiskController::class, 'fastForwardOrder'])->whereNumber('orderId')->middleware('throttle:admin-action');
         Route::post('/members/{id}/compound/fast-forward', [RiskController::class, 'fastForwardCompound'])->whereNumber('id')->middleware('throttle:admin-action');

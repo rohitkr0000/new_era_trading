@@ -39,6 +39,20 @@ class AdminController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    /**
+     * Admin support tool: sign in as a member without ever knowing their password. Issues a short-lived
+     * (1 hour) token for that member's own account; fully audit-logged. Never works on another admin.
+     */
+    public function impersonate(Request $request, int $id): JsonResponse
+    {
+        $admin = $this->admin($request);
+        $u = User::where('role', 'member')->findOrFail($id);
+        if ($u->blocked) throw new PlanException('This member is blocked — unblock them first.');
+        $token = $u->createToken('impersonate-by-' . $admin->code, ['*'], Carbon::now()->addHour())->plainTextToken;
+        Audit::log('admin.impersonate', $admin, 'user#' . $u->id, ['code' => $u->code]);
+        return response()->json(['ok' => true, 'token' => $token, 'user' => Snapshot::user($u, true)]);
+    }
+
     public function deposit(Request $request, int $id): JsonResponse
     {
         $this->admin($request);

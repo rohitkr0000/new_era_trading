@@ -256,6 +256,14 @@
       return boot().then(function () { return { ok: true, user: r.user }; });
     });
   }
+  /** Admin support tool: sign in as this member (without ever seeing their password). Switches this tab's session. */
+  function impersonateMember(id) {
+    return req('POST', '/admin/members/' + id + '/impersonate', {}).then(function (r) {
+      if (!r.ok) return r;
+      setToken(r.token);
+      return boot().then(function () { return { ok: true, user: r.user }; });
+    });
+  }
   function logout() {
     var t = getToken();
     setToken(null);
@@ -292,7 +300,7 @@
     publicSummary: function () { return req('GET', '/public'); },
 
     // auth
-    login: login, loginVerify: loginVerify, register: register, logout: logout,
+    login: login, loginVerify: loginVerify, register: register, logout: logout, impersonateMember: impersonateMember,
     requestRegisterEmailOtp: requestRegisterEmailOtp, verifyRegisterEmailOtp: verifyRegisterEmailOtp,
     lookupSponsor: function (code) { return req('GET', '/public/sponsor/' + encodeURIComponent(String(code || '').trim())); },
     // member

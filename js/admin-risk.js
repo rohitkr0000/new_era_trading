@@ -261,6 +261,11 @@
         '<button class="btn btn-sm btn-outline" type="submit">Change sponsor</button>' +
       '</form>' +
       '<p class="hint">Only future investments follow the new sponsor — commissions already paid under the old one are not rewritten, and this does not move the member in the Binary Tree.</p>' +
+      '<hr style="border:none;border-top:1px dashed var(--line);margin:.7rem 0">' +
+      '<div class="row" style="gap:.6rem;align-items:center;flex-wrap:wrap">' +
+        '<button class="btn btn-sm btn-outline" id="impersonateBtn" type="button"' + (u.blocked ? ' disabled' : '') + '>Login as this member</button>' +
+        '<span class="hint" style="margin:0">Opens their dashboard in this tab, without ever seeing their password — you\'ll need to sign back in as admin afterward.' + (u.blocked ? ' (unblock them first.)' : '') + '</span>' +
+      '</div>' +
     '</div>';
   }
 
@@ -340,6 +345,15 @@
         root.querySelector('#sponsorCode').value = '';
         UI.toast('Sponsor changed to ' + r.sponsor.code);
         reload();
+      });
+    };
+    var impBtn = root.querySelector('#impersonateBtn');
+    if (impBtn) impBtn.onclick = function () {
+      if (!window.confirm('Log in as ' + u.name + '? This replaces your current admin session in this browser tab — you will need to sign back in as admin afterward.')) return;
+      impBtn.disabled = true;
+      Store.impersonateMember(u.id).then(function (r) {
+        if (!r.ok) { impBtn.disabled = false; return UI.toast(r.error, 'err'); }
+        location.href = '../user/dashboard.html';
       });
     };
   }
