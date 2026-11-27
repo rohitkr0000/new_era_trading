@@ -14,6 +14,7 @@
       var orders = Store.ordersOf(me.id);
       var compounding = orders.filter(function (o) { return o.option === 'Compounding'; }).reduce(function (s, o) { return s + o.amount; }, 0);
       var runningPkgs = (Store.compound().packages || []).filter(function (pkg) { return pkg.status === 'running'; });
+      var pendingInterest = runningPkgs.reduce(function (s, pkg) { return s + (pkg.pendingInterest || 0); }, 0);
       var credited = Store.walletTxOf(me.id).filter(function (w) { return w.amount > 0; }).reduce(function (s, w) { return s + w.amount; }, 0);
       var link = UI.referralLink(me.code, ctx.base);
       var today = new Date(); today.setHours(0, 0, 0, 0);
@@ -55,6 +56,7 @@
           wallet('Income wallet', me.wallet, 'Total income ' + M.money(t.total), 'coins', '#/withdraw/request', 'Withdraw', 'w-gold') +
           wallet('Purchase wallet', me.purchaseWallet || 0, 'Total credited ' + M.money(credited), 'wallet', '#/deposit/new', 'Deposit', 'w-navy') +
           wallet('Invested', Store.investedTotal(me.id), 'Compounding ' + M.money(compounding), 'package', '#/wallet/purchase', 'Buy package', 'w-light') +
+          (runningPkgs.length ? wallet('Compounding interest', pendingInterest, 'Not yet decided · ' + runningPkgs.length + ' package' + (runningPkgs.length === 1 ? '' : 's'), 'trend', '#/wallet/compounding', 'Manage', 'w-gold') : '') +
         '</section>' +
 
         // ---- compounding: transfer to income wallet or keep compounding, right from the dashboard
