@@ -135,21 +135,24 @@ class AuthController extends Controller
         return $this->finishLogin($request, $user);
     }
 
-    /** Password check with the per-account lockout. Returns the user, or the JSON error response. */
+    /** Password check with the per-account lockout. The login field accepts either a real e-mail address
+     *  or the member's generated ID (code). Returns the user, or the JSON error response. */
     private function checkCredentials(Request $request): User|JsonResponse
     {
-        $d = $request->validate(['email' => 'required|email', 'password' => 'required|string']);
-        $email = strtolower(trim($d['email']));
-        $key = 'login:' . sha1($email . '|' . $request->ip());
+        $d = $request->validate(['email' => 'required|string|max:160', 'password' => 'required|string']);
+        $identifier = strtolower(trim($d['email']));
+        $key = 'login:' . sha1($identifier . '|' . $request->ip());
         if (RateLimiter::tooManyAttempts($key, 5)) {
             $mins = max(1, (int) ceil(RateLimiter::availableIn($key) / 60));
             return response()->json(['error' => "Too many failed attempts. Try again in {$mins} minute(s) or reset your password."], 429);
         }
-        $user = User::where('email', $email)->first();
+        $user = filter_var($identifier, FILTER_VALIDATE_EMAIL)
+            ? User::where('email', $identifier)->first()
+            : User::where('code', strtoupper($identifier))->first();
         if (! $user || ! Hash::check($d['password'], $user->password)) {
             RateLimiter::hit($key, 15 * 60);
-            Audit::log('auth.login-failed', $user, null, ['email' => $email]);
-            return response()->json(['error' => 'Invalid email or password.'], 422);
+            Audit::log('auth.login-failed', $user, null, ['identifier' => $identifier]);
+            return response()->json(['error' => 'Invalid email/member ID or password.'], 422);
         }
         if ($user->blocked) return response()->json(['error' => 'Your account has been blocked. Contact support.'], 403);
         return $user;
@@ -157,7 +160,7 @@ class AuthController extends Controller
 
     private function finishLogin(Request $request, User $user): JsonResponse
     {
-        RateLimiter::clear('login:' . sha1(strtolower($user->email) . '|' . $request->ip()));
+        RateLimiter::clear('login:' . sha1(strtolower(trim((string) $request->input('email'))) . '|' . $request->ip()));
         $user->forceFill(['last_login_at' => Carbon::now(), 'last_login_ip' => $request->ip()])->save();
         Audit::log('auth.login', $user);
         return response()->json(['token' => $this->issueToken($user), 'user' => Snapshot::user($user, true)]);
