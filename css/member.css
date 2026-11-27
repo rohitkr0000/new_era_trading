@@ -240,6 +240,11 @@ a.m-kpi:hover .m-kpi-go { opacity: 1; transform: translateX(2px); }
 .m-kv.lg li { padding: .62rem 0; }
 .m-kv.sum { background: var(--bg); border-radius: 14px; padding: .4rem 1rem; }
 .m-kv.sum .tot b { font-size: 1.15rem; color: var(--ok); }
+/* compounding package rows: action buttons that actually wrap on narrow phones instead of overflowing */
+.m-pkg-interest { flex: 0 0 100%; margin-top: .4rem; padding-top: .4rem; border-top: 1px dashed var(--line); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
+.m-pkg-actions { flex: 0 0 100%; margin-top: .4rem; display: flex; flex-wrap: wrap; gap: .5rem; width: 100%; }
+.m-pkg-actions .mbtn { flex: 1 1 auto; justify-content: center; }
+@media (max-width: 480px) { .m-pkg-actions .mbtn { flex: 1 1 100%; } }
 .m-note { display: flex; align-items: center; gap: .5rem; margin: .8rem 0 0; font-size: .8rem; color: var(--muted); }
 .m-note .ic { width: 16px; height: 16px; color: var(--gold); }
 .m-note.warn { color: #fcd34d; background: rgba(245, 184, 0, .1); padding: .6rem .8rem; border-radius: 12px; }

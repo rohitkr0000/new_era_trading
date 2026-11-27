@@ -56,17 +56,24 @@
           wallet('Income wallet', me.wallet, 'Total income ' + M.money(t.total), 'coins', '#/withdraw/request', 'Withdraw', 'w-gold') +
           wallet('Purchase wallet', me.purchaseWallet || 0, 'Total credited ' + M.money(credited), 'wallet', '#/deposit/new', 'Deposit', 'w-navy') +
           wallet('Invested', Store.investedTotal(me.id), 'Compounding ' + M.money(compounding), 'package', '#/wallet/purchase', 'Buy package', 'w-light') +
-          (runningPkgs.length ? wallet('Compounding interest', pendingInterest, 'Not yet decided · ' + runningPkgs.length + ' package' + (runningPkgs.length === 1 ? '' : 's'), 'trend', '#/wallet/compounding', 'Manage', 'w-gold') : '') +
+          (runningPkgs.length ? '<div class="m-wallet w-gold" style="flex-wrap:wrap">' +
+            '<span class="m-wallet-ic">' + M.icon('trend') + '</span>' +
+            '<div><small>Compounding interest</small><b>' + M.money(pendingInterest) + '</b><span>Not yet decided · ' + runningPkgs.length + ' package' + (runningPkgs.length === 1 ? '' : 's') + '</span></div>' +
+            (pendingInterest > 0 ? '<div class="m-pkg-actions" style="margin-top:0">' +
+              '<button class="mbtn gold sm" id="dXferAll">' + M.icon('coins') + 'Transfer to income wallet</button>' +
+              '<button class="mbtn line sm" id="dFoldAll">' + M.icon('trend') + 'Keep compounding</button></div>'
+              : '<a class="mbtn sm" href="#/wallet/compounding">Manage</a>') +
+          '</div>' : '') +
         '</section>' +
 
         // ---- compounding: transfer to income wallet or keep compounding, right from the dashboard
         (runningPkgs.length ? M.card('Compounding — daily interest', '<ul class="m-kv" id="dCompPkgs">' + runningPkgs.map(function (p) {
           return '<li style="flex-wrap:wrap"><span><code>' + M.esc(p.ref) + '</code> <small class="m-muted">' + p.paidDays + '/' + p.days + ' days</small></span><b>' + M.money(p.value) + '</b>' +
             (p.pendingInterest > 0
-              ? '<div style="flex:0 0 100%;margin-top:.4rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem">' +
+              ? '<div class="m-pkg-interest">' +
                 '<span class="m-muted" style="font-size:.82rem">Interest earned, not yet decided <b class="pos">+' + M.money(p.pendingInterest) + '</b></span>' +
-                '<span style="display:flex;gap:.4rem;flex-wrap:wrap"><button class="mbtn gold sm" data-dxfer="' + p.orderId + '">' + M.icon('coins') + 'Transfer to income wallet</button>' +
-                '<button class="mbtn line sm" data-dfold="' + p.orderId + '">' + M.icon('trend') + 'Keep compounding</button></span></div>'
+                '<div class="m-pkg-actions"><button class="mbtn gold sm" data-dxfer="' + p.orderId + '">' + M.icon('coins') + 'Transfer to income wallet</button>' +
+                '<button class="mbtn line sm" data-dfold="' + p.orderId + '">' + M.icon('trend') + 'Keep compounding</button></div></div>'
               : '<small class="m-muted" style="flex:0 0 100%">No interest accrued yet today.</small>') +
             '</li>';
         }).join('') + '</ul>', { cls: 'b-12', icon: 'trend', actions: '<a class="mbtn line sm" href="#/wallet/compounding">Manage all</a>' }) : '') +
@@ -134,6 +141,34 @@
             return Store.decideCompoundInterest(orderId, action, pin).then(function (r) {
               if (!r.ok) return M.toast(r.error, 'err');
               M.toast(action === 'transfer' ? 'Transferred ' + M.money(r.amount) + ' to your income wallet' : 'Added ' + M.money(r.amount) + ' to the package balance');
+              ctx.refresh();
+            });
+          });
+        };
+      });
+      el.querySelectorAll('#dXferAll, #dFoldAll').forEach(function (b) {
+        b.onclick = function () {
+          var action = b.id === 'dXferAll' ? 'transfer' : 'compound';
+          var targets = runningPkgs.filter(function (p) { return p.pendingInterest > 0; });
+          var plural = targets.length === 1 ? '' : 's';
+          var msg = action === 'transfer'
+            ? '<p><b>' + M.money(pendingInterest) + '</b> (across ' + targets.length + ' package' + plural + ') will be paid to your income wallet.</p>'
+            : '<p><b>' + M.money(pendingInterest) + '</b> (across ' + targets.length + ' package' + plural + ') will be added to each package\'s own balance, so tomorrow\'s interest is calculated on the bigger total.</p>';
+          M.confirm(action === 'transfer' ? 'Transfer to income wallet' : 'Keep compounding', msg, 'Confirm').then(function (ok) {
+            return ok ? M.askPin(me.id) : null;
+          }).then(function (pin) {
+            if (!pin) return null;
+            var chain = Promise.resolve(), total = 0, failed = 0;
+            targets.forEach(function (p) {
+              chain = chain.then(function () {
+                return Store.decideCompoundInterest(p.orderId, action, pin).then(function (r) {
+                  if (r.ok) total += Number(r.amount) || 0; else failed++;
+                });
+              });
+            });
+            return chain.then(function () {
+              if (failed) M.toast(failed + ' package(s) could not be updated', 'err');
+              else M.toast(action === 'transfer' ? 'Transferred ' + M.money(total) + ' to your income wallet' : 'Added ' + M.money(total) + ' across your packages');
               ctx.refresh();
             });
           });

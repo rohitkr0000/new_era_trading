@@ -164,12 +164,12 @@
           if (p.status === 'running' && (p.value > p.amount || p.pendingInterest > 0)) actions = '<button class="mbtn line sm" data-wd="' + p.orderId + '">' + M.icon('coins') + 'Withdraw now</button>';
           else if (p.status === 'matured') actions = (p.value > p.amount ? '<button class="mbtn gold sm" data-wd="' + p.orderId + '">' + M.icon('coins') + 'Withdraw</button>' : '') +
             '<button class="mbtn line sm" data-rc="' + p.orderId + '">' + M.icon('trend') + 'Re-compound</button>';
-          var interestRow = p.status === 'running' ? '<div style="flex:0 0 100%;margin-top:.4rem;padding-top:.4rem;border-top:1px dashed var(--line);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem">' +
+          var interestRow = p.status === 'running' ? '<div class="m-pkg-interest">' +
             '<span class="m-muted" style="font-size:.82rem">Interest earned, not yet decided <b class="pos">+' + M.money(p.pendingInterest) + '</b></span>' +
-            (p.pendingInterest > 0 ? '<span style="display:flex;gap:.4rem"><button class="mbtn gold sm" data-xfer="' + p.orderId + '">' + M.icon('coins') + 'Transfer to income wallet</button>' +
-              '<button class="mbtn line sm" data-fold="' + p.orderId + '">' + M.icon('trend') + 'Keep compounding</button></span>' : '') + '</div>' : '';
+            (p.pendingInterest > 0 ? '<div class="m-pkg-actions"><button class="mbtn gold sm" data-xfer="' + p.orderId + '">' + M.icon('coins') + 'Transfer to income wallet</button>' +
+              '<button class="mbtn line sm" data-fold="' + p.orderId + '">' + M.icon('trend') + 'Keep compounding</button></div>' : '') + '</div>' : '';
           return '<li style="flex-wrap:wrap"><span><code>' + M.esc(p.ref) + '</code> <small class="m-muted">bought ' + M.date(p.date) + ' · ' + p.paidDays + '/' + p.days + ' days · ' + M.badge(st[0], st[1]) + '</small></span>' +
-            '<b>' + M.money(p.value) + '</b>' + (actions ? '<div style="flex:0 0 100%;margin-top:.4rem;display:flex;gap:.4rem">' + actions + '</div>' : '') + interestRow + '</li>';
+            '<b>' + M.money(p.value) + '</b>' + (actions ? '<div class="m-pkg-actions">' + actions + '</div>' : '') + interestRow + '</li>';
         }).join('') + '</ul>' : '<p class="m-muted">Buy a compounding package to see it listed here.</p>', { icon: 'package' }) +
         M.card('Live amounts', C.lots.length ? '<ul class="m-kv">' + C.lots.map(function (l) {
           return '<li><span>' + (l.principal ? 'Purchased amount' : 'Interest of ' + M.esc(l.since)) + ' <small class="m-muted">· ' + l.daysLeft + ' day' + (l.daysLeft === 1 ? '' : 's') + ' left</small></span><b>' + M.money(l.amount) + '</b></li>';
