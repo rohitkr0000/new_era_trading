@@ -13,17 +13,17 @@
       var t = Store.totalsByType(me.id), pos = Store.positions(me.id), cap = Store.capInfo(me.id);
       var orders = Store.ordersOf(me.id);
       var compounding = orders.filter(function (o) { return o.option === 'Compounding'; }).reduce(function (s, o) { return s + o.amount; }, 0);
+      var runningPkgs = (Store.compound().packages || []).filter(function (pkg) { return pkg.status === 'running'; });
       var credited = Store.walletTxOf(me.id).filter(function (w) { return w.amount > 0; }).reduce(function (s, w) { return s + w.amount; }, 0);
       var link = UI.referralLink(me.code, ctx.base);
       var today = new Date(); today.setHours(0, 0, 0, 0);
       var hour = new Date().getHours(), greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
       var ann = Store.db.announcements.slice().sort(function (a, b) { return b.date - a.date; });
 
-      // reminder: withdrawals need a verified e-mail and approved KYC
+      // reminder: withdrawals need a verified e-mail
       var todo = [];
       if (S.emailVerifyRequired && !me.emailVerified) todo.push('verify your e-mail');
-      if (S.kycRequired && me.kyc !== 'approved') todo.push(me.kyc === 'pending' ? 'wait for your KYC review' : 'complete your KYC');
-      var todoBar = todo.length ? '<div class="m-alert" style="display:block;margin-bottom:1rem"><b>Before you can withdraw:</b> ' + todo.join(' and ') + '. <a href="#/account/kyc"><b>Open KYC &amp; Verification →</b></a></div>' : '';
+      var todoBar = todo.length ? '<div class="m-alert" style="display:block;margin-bottom:1rem"><b>Before you can withdraw:</b> ' + todo.join(' and ') + '. <a href="#/account/profile"><b>Open your profile →</b></a></div>' : '';
 
       el.innerHTML = todoBar +
         (ann.length ? '<div class="m-ticker">' + M.icon('megaphone') + '<div class="m-ticker-track"><div>' + ann.concat(ann).map(function (a) { return '<span>' + M.esc(a.text) + '</span>'; }).join('') + '</div></div></div>' : '') +
@@ -56,6 +56,18 @@
           wallet('Purchase wallet', me.purchaseWallet || 0, 'Total credited ' + M.money(credited), 'wallet', '#/deposit/new', 'Deposit', 'w-navy') +
           wallet('Invested', Store.investedTotal(me.id), 'Compounding ' + M.money(compounding), 'package', '#/wallet/purchase', 'Buy package', 'w-light') +
         '</section>' +
+
+        // ---- compounding: transfer to income wallet or keep compounding, right from the dashboard
+        (runningPkgs.length ? M.card('Compounding — daily interest', '<ul class="m-kv" id="dCompPkgs">' + runningPkgs.map(function (p) {
+          return '<li style="flex-wrap:wrap"><span><code>' + M.esc(p.ref) + '</code> <small class="m-muted">' + p.paidDays + '/' + p.days + ' days</small></span><b>' + M.money(p.value) + '</b>' +
+            (p.pendingInterest > 0
+              ? '<div style="flex:0 0 100%;margin-top:.4rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem">' +
+                '<span class="m-muted" style="font-size:.82rem">Interest earned, not yet decided <b class="pos">+' + M.money(p.pendingInterest) + '</b></span>' +
+                '<span style="display:flex;gap:.4rem;flex-wrap:wrap"><button class="mbtn gold sm" data-dxfer="' + p.orderId + '">' + M.icon('coins') + 'Transfer to income wallet</button>' +
+                '<button class="mbtn line sm" data-dfold="' + p.orderId + '">' + M.icon('trend') + 'Keep compounding</button></span></div>'
+              : '<small class="m-muted" style="flex:0 0 100%">No interest accrued yet today.</small>') +
+            '</li>';
+        }).join('') + '</ul>', { cls: 'b-12', icon: 'trend', actions: '<a class="mbtn line sm" href="#/wallet/compounding">Manage all</a>' }) : '') +
 
         // ---- charts
         M.card('Earnings — last 14 days', '<div class="m-chart" id="dArea"></div>', { cls: 'b-8', icon: 'trend', sub: 'All income types combined', actions: '<a class="mbtn line sm" href="#/income/statement">Statement</a>' }) +
@@ -107,6 +119,24 @@
 
       // wire up
       document.getElementById('dCopy').onclick = function () { M.copy(link); };
+      el.querySelectorAll('[data-dxfer],[data-dfold]').forEach(function (b) {
+        b.onclick = function () {
+          var orderId = b.dataset.dxfer || b.dataset.dfold, action = b.dataset.dxfer ? 'transfer' : 'compound';
+          var pkg = runningPkgs.filter(function (p) { return String(p.orderId) === orderId; })[0];
+          var msg = action === 'transfer' ? '<p><b>' + M.money(pkg ? pkg.pendingInterest : 0) + '</b> will be paid to your income wallet.</p>'
+            : '<p><b>' + M.money(pkg ? pkg.pendingInterest : 0) + '</b> will be added to this package\'s balance, so tomorrow\'s interest is calculated on the bigger total.</p>';
+          M.confirm(action === 'transfer' ? 'Transfer to income wallet' : 'Keep compounding', msg, 'Confirm').then(function (ok) {
+            return ok ? M.askPin(me.id) : null;
+          }).then(function (pin) {
+            if (!pin) return null;
+            return Store.decideCompoundInterest(orderId, action, pin).then(function (r) {
+              if (!r.ok) return M.toast(r.error, 'err');
+              M.toast(action === 'transfer' ? 'Transferred ' + M.money(r.amount) + ' to your income wallet' : 'Added ' + M.money(r.amount) + ' to the package balance');
+              ctx.refresh();
+            });
+          });
+        };
+      });
       M.area(document.getElementById('dArea'), Store.earningsByDay(me.id, 14), { prefix: S.currency, label: 'Earnings last 14 days' });
       var parts = Store.INCOME_TYPES.map(function (k) { return { label: IL[k], value: t[k], color: COLORS[k] }; });
       M.donut(document.getElementById('dDonut'), parts, { label: 'Total', value: M.money(t.total) });

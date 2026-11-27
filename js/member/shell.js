@@ -40,7 +40,6 @@
     ] },
     { id: 'account', label: 'Account', icon: 'user', items: [
       ['/account/profile', 'Update Profile', 'user', 'Personal and payout details'],
-      ['/account/kyc', 'KYC & Verification', 'shield', 'Verify e-mail and identity to withdraw'],
       ['/account/password', 'Change Password', 'key', 'Keep your login secure'],
       ['/account/pin', 'Change Txn PIN', 'shield', 'PIN for payouts and transfers'],
       ['/account/downloads', 'Downloads', 'download', 'Brand kit and your reports']
